@@ -51,6 +51,9 @@ const totalLabel = byId('total', HTMLDivElement);
 const rangeLabel = byId('range-label', HTMLDivElement);
 const projectTotals = byId('by-project', HTMLDivElement);
 const rowsBody = byId('rows', HTMLTableSectionElement);
+const totalsRow = byId('totals-row', HTMLTableSectionElement);
+const totalDurationCell = byId('total-duration', HTMLTableCellElement);
+const totalSessionsCell = byId('total-sessions', HTMLTableCellElement);
 const emptyMessage = byId('empty', HTMLParagraphElement);
 const editDialog = byId('edit-dialog', HTMLDialogElement);
 const editForm = byId('edit-form', HTMLFormElement);
@@ -170,6 +173,17 @@ function matchesProject(entry: Entry) {
   return entry.project === filters.project;
 }
 
+/**
+ * Number of work segments in the range across all the entries.
+ */
+function countSessions(entries: Entry[], range: Range) {
+  let count = 0;
+  for (const entry of entries) {
+    count += segmentsInRange(entry, range).length;
+  }
+  return count;
+}
+
 function firstStart(entry: Entry, range: Range) {
   return segmentsInRange(entry, range)[0].start;
 }
@@ -253,6 +267,7 @@ function renderDurations() {
   }
 
   totalLabel.textContent = formatDuration(total);
+  totalDurationCell.textContent = formatDuration(total);
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   projectTotals.replaceChildren(...sorted.map(item =>
     el('span', { className: 'chip' }, [item[0], el('b', { text: formatDuration(item[1]) }, [])])));
@@ -287,6 +302,8 @@ async function render() {
   }
 
   emptyMessage.hidden = rows.length > 0;
+  totalsRow.hidden = rows.length === 0;
+  totalSessionsCell.textContent = range ? countSessions(rows, range).toString() : '0';
   renderDurations();
 }
 
@@ -710,9 +727,24 @@ async function exportCsv() {
     'Sessions',
     'User'
   ]];
+  let total = 0;
   for (const entry of exported) {
     lines.push(csvRow(entry, range, translations, email, now));
+    total += entryDuration(entry, range, now);
   }
+  lines.push([
+    'Total',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    formatDuration(total),
+    formatHours(total),
+    countSessions(exported, range).toString(),
+    ''
+  ]);
 
   downloadFile(
     `time-tracker_${formatDate(range.start)}_${formatDate(subDays(range.end, 1))}.csv`,
