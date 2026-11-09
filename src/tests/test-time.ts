@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { formatDate, formatDuration, formatDurationWords, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
+import { formatDate, formatDuration, formatDurationEnglish, formatDurationWords, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
 
 function testWeekStartsOnMonday() {
   const range = getRange('week', '', '', new Date(2026, 10, 12, 15));
@@ -41,10 +41,13 @@ function testDurations() {
   assert(formatDuration(0) === '0:00', 'expected zero');
   assert(formatDuration(65 * 60000 + 59000) === '1:05', 'expected seconds to be dropped');
   assert(formatTimer(3600000 + 5 * 60000 + 9000) === '1:05:09', 'expected the timer format');
-  assert(formatDurationWords(90 * 60000) === '1ч\u00a030мин', 'expected hours and minutes in words');
-  assert(formatDurationWords(45 * 60000 + 59000) === '45мин', 'expected minutes only under an hour');
+  assert(formatDurationWords(90 * 60000) === '1ч\u00a030\u00a0мин', 'expected hours and minutes in words');
+  assert(formatDurationWords(45 * 60000 + 59000) === '45\u00a0мин', 'expected minutes only under an hour');
   assert(formatDurationWords(2 * 3600000) === '2ч', 'expected hours only on the hour');
-  assert(formatDurationWords(0) === '0мин', 'expected zero minutes');
+  assert(formatDurationWords(0) === '0\u00a0мин', 'expected zero minutes');
+  assert(formatDurationEnglish(90 * 60000) === '1h 30 min', 'expected hours and minutes in English');
+  assert(formatDurationEnglish(45 * 60000) === '45 min', 'expected minutes only under an hour in English');
+  assert(formatDurationEnglish(2 * 3600000) === '2h', 'expected hours only on the hour in English');
 }
 
 function testRangeLabels() {

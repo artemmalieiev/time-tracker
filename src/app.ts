@@ -20,9 +20,8 @@ import type { Period, Range } from './lib/time';
 import {
   formatDate,
   formatDateTime,
-  formatDuration,
+  formatDurationEnglish,
   formatDurationWords,
-  formatHours,
   formatInputDateTime,
   formatRangeLabel,
   formatTime,
@@ -694,23 +693,14 @@ function downloadFile(filename: string, content: string, type: string) {
   }, 1000);
 }
 
-function csvRow(entry: Entry, range: Range, translations: Map<string, string>, email: string, now: number) {
-  const segments = segmentsInRange(entry, range);
-  const start = new Date(segments[0].start);
-  const lastEnd = segments[segments.length - 1].end;
-  const duration = entryDuration(entry, range, now);
+function csvRow(entry: Entry, range: Range, translations: Map<string, string>, now: number) {
   return [
-    formatDate(start),
+    formatDate(new Date(firstStart(entry, range))),
     translations.get(entry.project) ?? entry.project,
     translations.get(entry.title) ?? entry.title,
     translations.get(entry.description) ?? entry.description,
     statusLabelEnglish(entry.status),
-    formatDateTime(start),
-    lastEnd === null ? '' : formatDateTime(new Date(lastEnd)),
-    formatDuration(duration),
-    formatHours(duration),
-    segments.length.toString(),
-    email
+    formatDurationEnglish(entryDuration(entry, range, now))
   ];
 }
 
@@ -743,40 +733,15 @@ async function exportCsv() {
     }
   }
 
-  const email = await getEmail();
   const now = Date.now();
   const exported = [...rows].sort((a, b) => firstStart(a, range) - firstStart(b, range));
-  const lines = [[
-    'Date',
-    'Project',
-    'Title',
-    'Description',
-    'Status',
-    'Start',
-    'End',
-    'Duration (h:mm)',
-    'Duration (hours)',
-    'Sessions',
-    'User'
-  ]];
+  const lines = [['Date', 'Project', 'Title', 'Description', 'Status', 'Duration']];
   let total = 0;
   for (const entry of exported) {
-    lines.push(csvRow(entry, range, translations, email, now));
+    lines.push(csvRow(entry, range, translations, now));
     total += entryDuration(entry, range, now);
   }
-  lines.push([
-    'Total',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    formatDuration(total),
-    formatHours(total),
-    countSessions(exported, range).toString(),
-    ''
-  ]);
+  lines.push(['Total', '', '', '', '', formatDurationEnglish(total)]);
 
   downloadFile(
     `time-tracker_${formatDate(range.start)}_${formatDate(subDays(range.end, 1))}.csv`,

@@ -139,21 +139,40 @@ export function formatDuration(milliseconds: number) {
 
 /**
  * Formats a duration in milliseconds as hours and minutes in words, leaving out a zero part.
- * The parts are joined with a non-breaking space so they never wrap apart.
+ * Spaces inside are non-breaking so the value never wraps apart.
  *
- * @example "1ч 30мин"
+ * @example "1ч 30 мин"
  */
 export function formatDurationWords(milliseconds: number) {
   const minutes = Math.floor(milliseconds / 60000);
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   if (hours === 0) {
-    return `${rest}мин`;
+    return `${rest}\u00a0мин`;
   }
   if (rest === 0) {
     return `${hours}ч`;
   }
-  return `${hours}ч\u00a0${rest}мин`;
+  return `${hours}ч\u00a0${rest}\u00a0мин`;
+}
+
+/**
+ * Formats a duration in milliseconds as hours and minutes in English words for the CSV export,
+ * leaving out a zero part.
+ *
+ * @example "1h 30 min"
+ */
+export function formatDurationEnglish(milliseconds: number) {
+  const minutes = Math.floor(milliseconds / 60000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) {
+    return `${rest} min`;
+  }
+  if (rest === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${rest} min`;
 }
 
 /**
@@ -167,13 +186,4 @@ export function formatTimer(milliseconds: number) {
   const minutes = Math.floor(seconds / 60) % 60;
   const rest = seconds % 60;
   return `${hours}:${minutes.toString().padStart(2, '0')}:${rest.toString().padStart(2, '0')}`;
-}
-
-/**
- * Formats a duration in milliseconds as decimal hours.
- *
- * @example "1.08"
- */
-export function formatHours(milliseconds: number) {
-  return (milliseconds / 3600000).toFixed(2);
 }
