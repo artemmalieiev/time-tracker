@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { formatDate, formatDuration, formatDurationEnglish, formatDurationWords, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
+import { formatDate, formatDuration, formatDurationEnglish, formatDurationWords, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime, parsePublicDuration } from '../lib/time';
 
 function testWeekStartsOnMonday() {
   const range = getRange('week', '', '', new Date(2026, 10, 12, 15));
@@ -37,6 +37,20 @@ function testStrictParsing() {
   assert(parsed !== null && parsed.getHours() === 8 && parsed.getMinutes() === 30, 'expected local time');
 }
 
+function testPublicDurationParsing() {
+  const empty = parsePublicDuration('', ' ');
+  assert(empty.error === null && empty.milliseconds === null, 'expected empty fields to mean no public time');
+  const both = parsePublicDuration('1', '30');
+  assert(both.milliseconds === 90 * 60000, 'expected 1 hour 30 minutes');
+  const minutesOnly = parsePublicDuration('', '45');
+  assert(minutesOnly.milliseconds === 45 * 60000, 'expected minutes alone to work');
+  const zero = parsePublicDuration('0', '0');
+  assert(zero.error === null && zero.milliseconds === 0, 'expected zero to be a valid public time');
+  assert(parsePublicDuration('1', '60').error !== null, 'expected more than 59 minutes to be rejected');
+  assert(parsePublicDuration('-1', '').error !== null, 'expected negative hours to be rejected');
+  assert(parsePublicDuration('1.5', '').error !== null, 'expected fractional hours to be rejected');
+}
+
 function testDurations() {
   assert(formatDuration(0) === '0:00', 'expected zero');
   assert(formatDuration(65 * 60000 + 59000) === '1:05', 'expected seconds to be dropped');
@@ -63,6 +77,7 @@ function testRangeLabels() {
 
 testWeekStartsOnMonday();
 testRangeLabels();
+testPublicDurationParsing();
 testWeekOnSunday();
 testLastMonthInJanuary();
 testCustomRange();

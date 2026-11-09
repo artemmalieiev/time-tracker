@@ -11,6 +11,7 @@ import {
   getEntries,
   getProjects,
   pauseTask,
+  reportDuration,
   restoreBackup,
   resumeTask,
   segmentsInRange,
@@ -27,7 +28,9 @@ import {
   formatTime,
   getRange,
   isPeriod,
-  parseInputDateTime
+  parseInputDateTime,
+  parsePublicDuration,
+  splitDuration
 } from './lib/time';
 import { getEmail } from './lib/user';
 
@@ -54,7 +57,7 @@ const projectTotals = byId('by-project', HTMLDivElement);
 const rowsBody = byId('rows', HTMLTableSectionElement);
 const totalsRow = byId('totals-row', HTMLTableSectionElement);
 const totalDurationCell = byId('total-duration', HTMLTableCellElement);
-const totalSessionsCell = byId('total-sessions', HTMLTableCellElement);
+const totalPublicCell = byId('total-public', HTMLTableCellElement);
 const emptyMessage = byId('empty', HTMLParagraphElement);
 const editDialog = byId('edit-dialog', HTMLDialogElement);
 const editForm = byId('edit-form', HTMLFormElement);
@@ -62,6 +65,8 @@ const editHeading = byId('edit-heading', HTMLHeadingElement);
 const titleInput = byId('e-title', HTMLInputElement);
 const descriptionInput = byId('e-desc', HTMLTextAreaElement);
 const projectInput = byId('e-project', HTMLInputElement);
+const publicHoursInput = byId('e-public-hours', HTMLInputElement);
+const publicMinutesInput = byId('e-public-minutes', HTMLInputElement);
 const projectOptions = byId('projects', HTMLDataListElement);
 const addSegmentButton = byId('add-segment', HTMLButtonElement);
 const segmentsContainer = byId('segments', HTMLDivElement);
@@ -129,6 +134,7 @@ const filters = loadFilters();
 let currentRange: Range | null = null;
 let rows: Entry[] = [];
 const durationCells = new Map<string, HTMLTableCellElement>();
+const publicCells = new Map<string, HTMLTableCellElement>();
 
 function statusLabel(status: Status) {
   switch (status) {
@@ -172,17 +178,6 @@ function matchesProject(entry: Entry) {
     return entry.project === '';
   }
   return entry.project === filters.project;
-}
-
-/**
- * Number of work segments in the range across all the entries.
- */
-function countSessions(entries: Entry[], range: Range) {
-  let count = 0;
-  for (const entry of entries) {
-    count += segmentsInRange(entry, range).length;
-  }
-  return count;
 }
 
 function firstStart(entry: Entry, range: Range) {
@@ -246,6 +241,14 @@ function renderRow(entry: Entry, range: Range) {
   const durationCell = el('td', { className: 'num dur' }, []);
   durationCells.set(entry.id, durationCell);
 
+  // Without public time the tracked time goes to the report, so we show it dimmed to say so.
+  const publicCell = el('td', { className: 'num' }, []);
+  if (entry.public_duration === null) {
+    publicCell.classList.add('muted');
+    publicCell.title = 'Не задано, в отчёт пойдёт фактическое время';
+  }
+  publicCells.set(entry.id, publicCell);
+
   return el('tr', { dataset: { id: entry.id } }, [
     el('td', { className: 'nowrap', text: formatDate(start) }, []),
     el('td', { className: 'project', text: entry.project || '—' }, []),
@@ -254,7 +257,7 @@ function renderRow(entry: Entry, range: Range) {
     el('td', { className: 'nowrap', text: formatTime(start) }, []),
     el('td', { className: 'nowrap', text: end }, []),
     durationCell,
-    el('td', { className: 'num', text: segments.length.toString() }, []),
+    publicCell,
     el('td', { className: 'actions' }, renderActions(entry))
   ]);
 }
@@ -265,8 +268,16 @@ function renderRow(entry: Entry, range: Range) {
 function renderDurations() {
   const now = Date.now();
   let total = 0;
+  let publicTotal = 0;
   const totals = new Map<string, number>();
   for (const entry of rows) {
+    const reported = reportDuration(entry, currentRange, now);
+    publicTotal += reported;
+    const publicCell = publicCells.get(entry.id);
+    if (publicCell) {
+      publicCell.textContent = formatDurationWords(reported);
+    }
+
     const duration = entryDuration(entry, currentRange, now);
     total += duration;
     const name = entry.project || 'Без проекта';
@@ -279,6 +290,7 @@ function renderDurations() {
 
   totalLabel.textContent = formatDurationWords(total);
   totalDurationCell.textContent = formatDurationWords(total);
+  totalPublicCell.textContent = formatDurationWords(publicTotal);
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0) {
     projectTotals.replaceChildren(el('p', { className: 'muted', text: 'Пока пусто' }, []));
@@ -313,6 +325,7 @@ async function render() {
   currentRange = range;
   rows = [];
   durationCells.clear();
+  publicCells.clear();
 
   if (range) {
     for (const entry of entries) {
@@ -334,7 +347,6 @@ async function render() {
 
   emptyMessage.hidden = rows.length > 0;
   totalsRow.hidden = rows.length === 0;
-  totalSessionsCell.textContent = range ? countSessions(rows, range).toString() : '0';
   renderDurations();
 }
 
@@ -432,6 +444,7 @@ function openEditor(entry: Entry | null) {
     titleInput.value = entry.title;
     descriptionInput.value = entry.description;
     projectInput.value = entry.project;
+    fillPublicFields(entry);
     for (const segment of entry.segments) {
       addSegmentRow(segment);
     }
@@ -441,12 +454,31 @@ function openEditor(entry: Entry | null) {
     titleInput.value = '';
     descriptionInput.value = '';
     projectInput.value = filters.project === '__none__' ? '' : filters.project;
+    fillPublicFields(null);
     addSegmentRow({ end: now.getTime(), start: subHours(now, 1).getTime() });
   }
 
   editError.textContent = '';
   editDialog.showModal();
   titleInput.focus();
+}
+
+/**
+ * Fills the public time fields. Empty fields show the tracked time as a placeholder, so the person
+ * sees what gets reported when they leave them empty.
+ */
+function fillPublicFields(entry: Entry | null) {
+  const tracked = splitDuration(entry ? entryDuration(entry, null, Date.now()) : 0);
+  publicHoursInput.placeholder = tracked.hours.toString();
+  publicMinutesInput.placeholder = tracked.minutes.toString();
+  if (entry && entry.public_duration !== null) {
+    const parts = splitDuration(entry.public_duration);
+    publicHoursInput.value = parts.hours.toString();
+    publicMinutesInput.value = parts.minutes.toString();
+  } else {
+    publicHoursInput.value = '';
+    publicMinutesInput.value = '';
+  }
 }
 
 function invalid(error: string) {
@@ -507,9 +539,15 @@ function validate() {
     status = editing.status;
   }
 
+  const publicDuration = parsePublicDuration(publicHoursInput.value, publicMinutesInput.value);
+  if (publicDuration.error !== null) {
+    return invalid(publicDuration.error);
+  }
+
   const draft = {
     description: descriptionInput.value,
     project: projectInput.value,
+    public_duration: publicDuration.milliseconds,
     segments,
     status,
     title
@@ -700,7 +738,7 @@ function csvRow(entry: Entry, range: Range, translations: Map<string, string>, n
     translations.get(entry.title) ?? entry.title,
     translations.get(entry.description) ?? entry.description,
     statusLabelEnglish(entry.status),
-    formatDurationEnglish(entryDuration(entry, range, now))
+    formatDurationEnglish(reportDuration(entry, range, now))
   ];
 }
 
@@ -739,7 +777,7 @@ async function exportCsv() {
   let total = 0;
   for (const entry of exported) {
     lines.push(csvRow(entry, range, translations, now));
-    total += entryDuration(entry, range, now);
+    total += reportDuration(entry, range, now);
   }
   lines.push(['Total', '', '', '', '', formatDurationEnglish(total)]);
 

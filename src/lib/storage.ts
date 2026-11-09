@@ -35,6 +35,12 @@ export interface Entry {
   project: string;
 
   /**
+   * Time in milliseconds the person chose to report instead of the tracked time, or null to report
+   * the tracked time.
+   */
+  public_duration: number | null;
+
+  /**
    * In chronological order.
    */
   segments: Segment[];
@@ -82,6 +88,8 @@ interface Draft {
 
   project: string;
 
+  public_duration: number | null;
+
   segments: Segment[];
 
   status: Status;
@@ -97,7 +105,9 @@ function isLegacyEntry(value: any): value is LegacyEntry {
 
 function upgrade(entry: Entry | LegacyEntry) {
   if (!isLegacyEntry(entry)) {
-    return entry;
+    // Entries saved before public time existed have no such field, and they report tracked time.
+    const current: Entry = { ...entry, public_duration: entry.public_duration ?? null };
+    return current;
   }
 
   const upgraded: Entry = {
@@ -105,6 +115,7 @@ function upgrade(entry: Entry | LegacyEntry) {
     description: entry.description,
     id: entry.id,
     project: entry.project,
+    public_duration: null,
     segments: entry.segments,
     status: entry.status,
     title: entry.title,
@@ -232,6 +243,7 @@ export function startTask(title: string, description: string, project: string) {
       description: description.trim(),
       id: crypto.randomUUID(),
       project: project.trim(),
+      public_duration: null,
       segments: [{ end: null, start: now }],
       status: 'running',
       title: trimmedTitle,
@@ -269,12 +281,16 @@ export function resumeTask(id: string) {
   });
 }
 
+/**
+ * Stops the task for good and returns it as saved, with its last segment closed.
+ */
 export function finishTask(id: string) {
   return mutate(function finish(entries, user, now) {
     const entry = findOwn(entries, user, id);
     closeOpenSegment(entry, now);
     entry.status = 'done';
     entry.updated_at = now;
+    return entry;
   });
 }
 
@@ -291,6 +307,7 @@ export function addEntry(draft: Draft) {
       description: draft.description.trim(),
       id: crypto.randomUUID(),
       project: draft.project.trim(),
+      public_duration: draft.public_duration,
       segments: draft.segments,
       status: draft.status,
       title: draft.title.trim(),
@@ -312,9 +329,21 @@ export function updateEntry(id: string, draft: Draft) {
     }
     entry.description = draft.description.trim();
     entry.project = draft.project.trim();
+    entry.public_duration = draft.public_duration;
     entry.segments = draft.segments;
     entry.status = draft.status;
     entry.title = draft.title.trim();
+    entry.updated_at = now;
+  });
+}
+
+/**
+ * Sets the time to report for a task, or clears it with null so the tracked time is reported.
+ */
+export function setPublicDuration(id: string, milliseconds: number | null) {
+  return mutate(function setPublic(entries, user, now) {
+    const entry = findOwn(entries, user, id);
+    entry.public_duration = milliseconds;
     entry.updated_at = now;
   });
 }
@@ -366,6 +395,31 @@ export function entryDuration(entry: Entry, range: Range | null, now: number) {
 }
 
 /**
+ * Time to report for the task in milliseconds: the public time when one is set, otherwise the
+ * tracked time. When a range is given and the task ran across several periods, the public time is
+ * split between them in the same shares as the tracked time.
+ */
+export function reportDuration(entry: Entry, range: Range | null, now: number) {
+  const tracked = entryDuration(entry, range, now);
+  const publicDuration = entry.public_duration;
+  if (publicDuration === null) {
+    return tracked;
+  }
+  if (!range) {
+    return publicDuration;
+  }
+
+  const total = entryDuration(entry, null, now);
+  if (total === 0) {
+    // With no tracked time there is nothing to split by, so the whole public time goes to the
+    // period where the task started.
+    const first = entry.segments[0];
+    return segmentsInRange(entry, range).includes(first) ? publicDuration : 0;
+  }
+  return Math.round(publicDuration * tracked / total);
+}
+
+/**
  * A backup of the signed-in person's entries and projects, ready to be saved as JSON.
  */
 export async function createBackup() {
@@ -405,6 +459,17 @@ function isStatus(value: any): value is Status {
   return value === 'done' || value === 'paused' || value === 'running';
 }
 
+/**
+ * Whether the value can be stored as public time. Missing counts, because backups made before
+ * public time existed have no such field.
+ */
+function isPublicDuration(value: any) {
+  if (value === undefined || value === null) {
+    return true;
+  }
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
 function isTime(value: any): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
@@ -435,6 +500,7 @@ function isAnyEntry(value: any): value is Entry | LegacyEntry {
     && typeof value.title === 'string'
     && typeof value.description === 'string'
     && typeof value.project === 'string'
+    && isPublicDuration(value.public_duration)
     && isStatus(value.status)
     && (isTime(value.created_at) || isTime(value.createdAt))
     && (isTime(value.updated_at) || isTime(value.updatedAt));
@@ -521,6 +587,7 @@ function mergeOne(entries: Entry[], user: string, value: unknown, counts: MergeC
     description: entry.description,
     id: entry.id,
     project: entry.project.trim(),
+    public_duration: entry.public_duration,
     segments: entry.segments.map(segment => ({ end: segment.end, start: segment.start })),
     status,
     title: entry.title.trim(),

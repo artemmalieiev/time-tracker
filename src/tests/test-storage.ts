@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { Entry } from '../lib/storage';
-import { entryDuration, finishTask, getEntries, getPaused, getProjects, getRunning, pauseTask, resumeTask, segmentsInRange, startTask } from '../lib/storage';
+import { entryDuration, finishTask, getEntries, getPaused, getProjects, getRunning, pauseTask, reportDuration, resumeTask, segmentsInRange, setPublicDuration, startTask } from '../lib/storage';
 import { getRange } from '../lib/time';
 import { enqueue, reset, state } from './chrome-mock';
 
@@ -87,6 +87,7 @@ function testSplitByDay() {
     description: '',
     id: 'x',
     project: '',
+    public_duration: null,
     segments: [
       { end: new Date(2026, 10, 10, 10).getTime(), start: new Date(2026, 10, 10, 9).getTime() },
       { end: new Date(2026, 10, 11, 9, 30).getTime(), start: new Date(2026, 10, 11, 9).getTime() }
@@ -103,6 +104,79 @@ function testSplitByDay() {
   assert(entryDuration(entry, day, Date.now()) === 30 * 60000, 'expected only the second day to count');
 }
 
+/**
+ * A done task worked on for an hour on November 10 and an hour on November 11.
+ */
+function twoDayTask(publicDuration: number | null) {
+  const entry: Entry = {
+    created_at: 1,
+    description: '',
+    id: 'two-days',
+    project: '',
+    public_duration: publicDuration,
+    segments: [
+      { end: new Date(2026, 10, 10, 10).getTime(), start: new Date(2026, 10, 10, 9).getTime() },
+      { end: new Date(2026, 10, 11, 10).getTime(), start: new Date(2026, 10, 11, 9).getTime() }
+    ],
+    status: 'done',
+    title: 'Two days',
+    updated_at: 1,
+    user_email: 'me@example.com'
+  };
+  return entry;
+}
+
+function testReportDuration() {
+  const monday = getRange('today', '', '', new Date(2026, 10, 10, 12));
+  const tuesday = getRange('today', '', '', new Date(2026, 10, 11, 12));
+  const week = getRange('week', '', '', new Date(2026, 10, 11, 12));
+  assert(monday !== null && tuesday !== null && week !== null, 'expected ranges');
+  const now = Date.now();
+  const hour = 3600000;
+
+  const tracked = twoDayTask(null);
+  assert(reportDuration(tracked, monday, now) === hour, 'expected tracked time without public time');
+
+  const reported = twoDayTask(3 * hour);
+  assert(reportDuration(reported, monday, now) === 1.5 * hour, 'expected half of the public time on the first day');
+  assert(reportDuration(reported, tuesday, now) === 1.5 * hour, 'expected half of the public time on the second day');
+  assert(reportDuration(reported, week, now) === 3 * hour, 'expected all the public time over the week');
+  assert(reportDuration(reported, null, now) === 3 * hour, 'expected all the public time without a range');
+
+  const instant = twoDayTask(hour);
+  instant.segments = [{ end: new Date(2026, 10, 10, 9).getTime(), start: new Date(2026, 10, 10, 9).getTime() }];
+  assert(reportDuration(instant, monday, now) === hour, 'expected public time on the day a zero-length task started');
+  assert(reportDuration(instant, tuesday, now) === 0, 'expected nothing on other days for a zero-length task');
+}
+
+async function testSetPublicDuration() {
+  const task = await startTask('Задача', '', '');
+  let entries = await getEntries();
+  assert(find(entries, task.id).public_duration === null, 'expected a new task to have no public time');
+  await setPublicDuration(task.id, 45 * 60000);
+  entries = await getEntries();
+  assert(find(entries, task.id).public_duration === 45 * 60000, 'expected public time to be saved');
+  await setPublicDuration(task.id, null);
+  entries = await getEntries();
+  assert(find(entries, task.id).public_duration === null, 'expected public time to be cleared');
+}
+
+async function testEntriesWithoutPublicTime() {
+  state.storage.set('entries', [{
+    created_at: 1,
+    description: '',
+    id: 'before',
+    project: '',
+    segments: [{ end: 2000, start: 1000 }],
+    status: 'done',
+    title: 'Saved before public time existed',
+    updated_at: 1,
+    user_email: 'me@example.com'
+  }]);
+  const entries = await getEntries();
+  assert(entries[0].public_duration === null, 'expected a missing public time to read as null');
+}
+
 async function main() {
   await testPauseFreezesTime();
   reset();
@@ -111,7 +185,12 @@ async function main() {
   await testOtherPeopleAreHidden();
   reset();
   await testLegacyEntriesUpgrade();
+  reset();
+  await testSetPublicDuration();
+  reset();
+  await testEntriesWithoutPublicTime();
   testSplitByDay();
+  testReportDuration();
 }
 
 enqueue('storage', main);

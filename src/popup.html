@@ -28,6 +28,29 @@
     </div>
   </section>
 
+  <section id="finish-panel" class="finish" hidden>
+    <h2 class="heading">Задача завершена</h2>
+    <div id="finish-title" class="run-title"></div>
+    <div id="finish-tracked" class="muted"></div>
+    <form id="finish-form" class="finish-form" novalidate>
+      <fieldset class="public-time">
+        <legend>Публичное время</legend>
+        <div class="public-fields">
+          <input type="number" id="finish-hours" min="0" step="1" inputmode="numeric" aria-label="Часы">
+          <span class="muted">ч</span>
+          <input type="number" id="finish-minutes" min="0" max="59" step="1" inputmode="numeric" aria-label="Минуты">
+          <span class="muted">мин</span>
+        </div>
+      </fieldset>
+      <p class="muted hint">Попадёт в CSV вместо фактического. Оставьте пустым, чтобы выгружалось фактическое.</p>
+      <p id="finish-error" class="error" role="alert"></p>
+      <div class="row">
+        <button type="submit" class="primary">Сохранить</button>
+        <button type="button" id="finish-skip">Пропустить</button>
+      </div>
+    </form>
+  </section>
+
   <section id="paused-section" class="paused" hidden>
     <h2 class="heading">На паузе</h2>
     <ul id="paused-list"></ul>

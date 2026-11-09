@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { createBackup, deleteEntry, getEntries, getProjects, pauseTask, restoreBackup, startTask, updateEntry } from '../lib/storage';
+import { createBackup, deleteEntry, getEntries, getProjects, pauseTask, restoreBackup, setPublicDuration, startTask, updateEntry } from '../lib/storage';
 import { enqueue, reset, state } from './chrome-mock';
 
 async function testRoundTrip() {
@@ -21,7 +21,7 @@ async function testRoundTrip() {
   result = await restoreBackup(backup);
   assert(result.added === 0 && result.unchanged === 2, 'expected a second restore to change nothing');
 
-  await updateEntry(first.id, { description: '', project: 'P1', segments: entries[0].segments, status: 'paused', title: 'A edited' });
+  await updateEntry(first.id, { description: '', project: 'P1', public_duration: null, segments: entries[0].segments, status: 'paused', title: 'A edited' });
   await restoreBackup(backup);
   entries = await getEntries();
   assert(entries.find(entry => entry.id === first.id)?.title === 'A edited', 'expected a newer local edit to win');
@@ -90,6 +90,33 @@ async function testRejectsBadInput() {
   assert(result.invalid === 3 && result.added === 0, 'expected broken entries to be skipped');
 }
 
+async function testPublicTime() {
+  const task = await startTask('A', '', '');
+  await setPublicDuration(task.id, 90 * 60000);
+  const created = await createBackup();
+  const backup: unknown = JSON.parse(JSON.stringify(created));
+  state.storage.clear();
+  await restoreBackup(backup);
+  let entries = await getEntries();
+  assert(entries[0].public_duration === 90 * 60000, 'expected public time to survive a backup');
+
+  state.storage.clear();
+  await restoreBackup({
+    app: 'time-tracker',
+    entries: [{ created_at: 1, description: '', id: 'old', project: '', segments: [{ end: 2000, start: 1000 }], status: 'done', title: 'Old', updated_at: 1 }],
+    version: 2
+  });
+  entries = await getEntries();
+  assert(entries[0].public_duration === null, 'expected a backup without public time to restore as null');
+
+  const result = await restoreBackup({
+    app: 'time-tracker',
+    entries: [{ created_at: 1, description: '', id: 'negative', project: '', public_duration: -1, segments: [{ end: 2000, start: 1000 }], status: 'done', title: 'Negative', updated_at: 1 }],
+    version: 2
+  });
+  assert(result.invalid === 1, 'expected negative public time to be rejected');
+}
+
 async function main() {
   await testRoundTrip();
   reset();
@@ -98,6 +125,8 @@ async function main() {
   await testVersionOneBackup();
   reset();
   await testRejectsBadInput();
+  reset();
+  await testPublicTime();
 }
 
 enqueue('backup', main);

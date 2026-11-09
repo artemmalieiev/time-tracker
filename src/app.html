@@ -72,7 +72,7 @@
               <th>Начало</th>
               <th>Конец</th>
               <th class="num">Время</th>
-              <th class="num" title="Сколько раз задачу запускали после паузы">Интервалы</th>
+              <th class="num" title="Время для отчёта. Если не задано, в отчёт идёт фактическое">Публичное</th>
               <th><span class="visually-hidden">Действия</span></th>
             </tr>
           </thead>
@@ -81,7 +81,7 @@
             <tr>
               <th colspan="6" scope="row">Итого</th>
               <td id="total-duration" class="num"></td>
-              <td id="total-sessions" class="num"></td>
+              <td id="total-public" class="num"></td>
               <td></td>
             </tr>
           </tfoot>
@@ -104,6 +104,17 @@
         <input id="e-project" list="projects" maxlength="100" autocomplete="off">
       </label>
       <datalist id="projects"></datalist>
+
+      <fieldset class="public-time">
+        <legend>Публичное время</legend>
+        <div class="public-fields">
+          <input type="number" id="e-public-hours" min="0" step="1" inputmode="numeric" aria-label="Часы">
+          <span class="muted">ч</span>
+          <input type="number" id="e-public-minutes" min="0" max="59" step="1" inputmode="numeric" aria-label="Минуты">
+          <span class="muted">мин</span>
+        </div>
+        <p class="muted hint">Попадёт в CSV вместо фактического. Оставьте пустым, чтобы выгружалось фактическое.</p>
+      </fieldset>
 
       <div class="segments-head">
         <h3 class="heading">Интервалы работы</h3>

@@ -1,7 +1,17 @@
 import { byId, el } from './lib/dom';
 import type { Entry } from './lib/storage';
-import { entryDuration, finishTask, getPaused, getProjects, getRunning, pauseTask, resumeTask, startTask } from './lib/storage';
-import { formatDuration, formatTimer } from './lib/time';
+import {
+  entryDuration,
+  finishTask,
+  getPaused,
+  getProjects,
+  getRunning,
+  pauseTask,
+  resumeTask,
+  setPublicDuration,
+  startTask
+} from './lib/storage';
+import { formatDuration, formatDurationWords, formatTimer, parsePublicDuration, splitDuration } from './lib/time';
 import { getEmail } from './lib/user';
 
 const userLabel = byId('user', HTMLSpanElement);
@@ -12,6 +22,14 @@ const runningTimer = byId('run-timer', HTMLDivElement);
 const runningSweep = byId('run-sweep', SVGCircleElement);
 const pauseButton = byId('btn-pause', HTMLButtonElement);
 const finishButton = byId('btn-finish', HTMLButtonElement);
+const finishPanel = byId('finish-panel', HTMLElement);
+const finishTitle = byId('finish-title', HTMLDivElement);
+const finishTracked = byId('finish-tracked', HTMLDivElement);
+const finishForm = byId('finish-form', HTMLFormElement);
+const finishHoursInput = byId('finish-hours', HTMLInputElement);
+const finishMinutesInput = byId('finish-minutes', HTMLInputElement);
+const finishError = byId('finish-error', HTMLParagraphElement);
+const finishSkipButton = byId('finish-skip', HTMLButtonElement);
 const pausedSection = byId('paused-section', HTMLElement);
 const pausedList = byId('paused-list', HTMLUListElement);
 const showFormButton = byId('show-form', HTMLButtonElement);
@@ -26,6 +44,9 @@ const addManualLink = byId('add-manual', HTMLAnchorElement);
 
 let running: Entry | null = null;
 let tick = 0;
+
+// The task just finished, while the panel asking for its public time is open.
+let finishing: Entry | null = null;
 
 // Chrome caps a popup at 600px tall, so while a task runs the new task form stays folded behind a
 // button until the person asks for it.
@@ -61,8 +82,20 @@ async function render() {
   const paused = await getPaused();
   const projects = await getProjects();
 
-  runningSection.hidden = !running;
   clearInterval(tick);
+  projectOptions.replaceChildren(...projects.map(name => el('option', { value: name }, [])));
+
+  // While the finish panel is open it is the only thing on screen, whatever else changes.
+  finishPanel.hidden = !finishing;
+  if (finishing) {
+    runningSection.hidden = true;
+    pausedSection.hidden = true;
+    showFormButton.hidden = true;
+    form.hidden = true;
+    return;
+  }
+
+  runningSection.hidden = !running;
   if (running) {
     runningTitle.textContent = running.title;
     runningProject.textContent = running.project || 'Без проекта';
@@ -76,7 +109,49 @@ async function render() {
 
   pausedSection.hidden = paused.length === 0;
   pausedList.replaceChildren(...paused.map(renderPausedItem));
-  projectOptions.replaceChildren(...projects.map(name => el('option', { value: name }, [])));
+}
+
+/**
+ * Finishes the task right away, so its time stops at the click, then asks for its public time.
+ */
+async function finishAndAsk(id: string) {
+  const entry = await finishTask(id);
+  const tracked = entryDuration(entry, null, Date.now());
+  const parts = splitDuration(tracked);
+  finishing = entry;
+  finishTitle.textContent = entry.title;
+  finishTracked.textContent = `Фактически: ${formatDurationWords(tracked)}`;
+  finishHoursInput.value = '';
+  finishMinutesInput.value = '';
+  finishHoursInput.placeholder = parts.hours.toString();
+  finishMinutesInput.placeholder = parts.minutes.toString();
+  finishError.textContent = '';
+  await render();
+  finishHoursInput.focus();
+}
+
+function closeFinishPanel() {
+  finishing = null;
+  render().catch(console.warn);
+}
+
+async function savePublicDuration() {
+  if (!finishing) {
+    return;
+  }
+  const parsed = parsePublicDuration(finishHoursInput.value, finishMinutesInput.value);
+  if (parsed.error !== null) {
+    finishError.textContent = parsed.error;
+    return;
+  }
+  if (parsed.milliseconds !== null) {
+    await setPublicDuration(finishing.id, parsed.milliseconds);
+  }
+  closeFinishPanel();
+}
+
+function showFinishError(error: unknown) {
+  finishError.textContent = error instanceof Error ? error.message : 'Не удалось сохранить';
 }
 
 async function renderUser() {
@@ -91,7 +166,7 @@ function runPausedAction(action: string | undefined, id: string) {
       resumeTask(id).catch(console.warn);
       break;
     case 'finish':
-      finishTask(id).catch(console.warn);
+      finishAndAsk(id).catch(console.warn);
       break;
     default:
       console.warn('Unknown paused task action', action);
@@ -121,8 +196,18 @@ pauseButton.addEventListener('click', function onPauseClick() {
 
 finishButton.addEventListener('click', function onFinishClick() {
   if (running) {
-    finishTask(running.id).catch(console.warn);
+    finishAndAsk(running.id).catch(console.warn);
   }
+});
+
+finishForm.addEventListener('submit', function onFinishSubmit(event) {
+  event.preventDefault();
+  finishError.textContent = '';
+  savePublicDuration().catch(showFinishError);
+});
+
+finishSkipButton.addEventListener('click', function onFinishSkipClick() {
+  closeFinishPanel();
 });
 
 pausedList.addEventListener('click', function onPausedClick(event) {

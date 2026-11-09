@@ -176,6 +176,45 @@ export function formatDurationEnglish(milliseconds: number) {
 }
 
 /**
+ * Splits a duration in milliseconds into whole hours and the minutes left over, for filling the
+ * hours and minutes fields of public time.
+ */
+export function splitDuration(milliseconds: number) {
+  const minutes = Math.floor(milliseconds / 60000);
+  return { hours: Math.floor(minutes / 60), minutes: minutes % 60 };
+}
+
+function invalidPublicDuration(error: string) {
+  return { error, milliseconds: null };
+}
+
+/**
+ * Reads public time from the text of an hours field and a minutes field. Both empty means no
+ * public time, so the tracked time is reported. Returns the problem to show when the fields hold
+ * something other than whole numbers or more than 59 minutes.
+ */
+export function parsePublicDuration(hours: string, minutes: string) {
+  const hoursText = hours.trim();
+  const minutesText = minutes.trim();
+  if (hoursText === '' && minutesText === '') {
+    return { error: null, milliseconds: null };
+  }
+  if (!/^\d*$/.test(hoursText)) {
+    return invalidPublicDuration('Часы — целое число не меньше нуля.');
+  }
+  if (!/^\d*$/.test(minutesText)) {
+    return invalidPublicDuration('Минуты — целое число не меньше нуля.');
+  }
+
+  const hoursValue = hoursText === '' ? 0 : parseInt(hoursText, 10);
+  const minutesValue = minutesText === '' ? 0 : parseInt(minutesText, 10);
+  if (minutesValue > 59) {
+    return invalidPublicDuration('Минут может быть не больше 59.');
+  }
+  return { error: null, milliseconds: (hoursValue * 60 + minutesValue) * 60000 };
+}
+
+/**
  * Formats a duration in milliseconds as hours, minutes and seconds.
  *
  * @example "1:05:09"
