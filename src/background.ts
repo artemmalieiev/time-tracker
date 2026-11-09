@@ -8,7 +8,9 @@ import { getPaused, getRunning } from './lib/storage';
 async function updateBadge() {
   const running = await getRunning();
   if (running) {
-    await chrome.action.setBadgeBackgroundColor({ color: '#16a34a' });
+    // A white dot on red, like a record button. Red is the same signal red as the popup timer.
+    await chrome.action.setBadgeBackgroundColor({ color: '#d92b21' });
+    await chrome.action.setBadgeTextColor({ color: '#ffffff' });
     await chrome.action.setBadgeText({ text: '●' });
     return chrome.action.setTitle({ title: `В работе: ${running.title}` });
   }
@@ -16,6 +18,7 @@ async function updateBadge() {
   const paused = await getPaused();
   if (paused.length > 0) {
     await chrome.action.setBadgeBackgroundColor({ color: '#6b7280' });
+    await chrome.action.setBadgeTextColor({ color: '#ffffff' });
     await chrome.action.setBadgeText({ text: '❚❚' });
     return chrome.action.setTitle({ title: `На паузе: ${paused.length}` });
   }
