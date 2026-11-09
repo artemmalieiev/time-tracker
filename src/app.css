@@ -47,7 +47,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px 32px 64px; }
 .breakdown { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
 .ranked { display: flex; flex-direction: column; gap: 6px; }
 .ranked-row {
-  display: grid; grid-template-columns: minmax(80px, 160px) minmax(0, 1fr) 4.5em 3.5em;
+  display: grid; grid-template-columns: minmax(80px, 160px) minmax(0, 1fr) 6.5em 3.5em;
   align-items: center; gap: 12px; font-size: 13px;
 }
 .ranked-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -96,7 +96,7 @@ dialog::backdrop { background: rgb(19 23 28 / .45); }
   .top { padding: 16px 16px 0; }
   main { padding: 16px 16px 48px; }
   .summary { grid-template-columns: 1fr; }
-  .ranked-row { grid-template-columns: minmax(60px, 110px) minmax(0, 1fr) 4em 3em; gap: 8px; }
+  .ranked-row { grid-template-columns: minmax(60px, 110px) minmax(0, 1fr) 6em 3em; gap: 8px; }
   .spacer { display: none; }
   .segment { flex-wrap: wrap; }
 }

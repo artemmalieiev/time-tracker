@@ -21,6 +21,7 @@ import {
   formatDate,
   formatDateTime,
   formatDuration,
+  formatDurationWords,
   formatHours,
   formatInputDateTime,
   formatRangeLabel,
@@ -273,12 +274,12 @@ function renderDurations() {
     totals.set(name, (totals.get(name) ?? 0) + duration);
     const cell = durationCells.get(entry.id);
     if (cell) {
-      cell.textContent = formatDuration(duration);
+      cell.textContent = formatDurationWords(duration);
     }
   }
 
-  totalLabel.textContent = formatDuration(total);
-  totalDurationCell.textContent = formatDuration(total);
+  totalLabel.textContent = formatDurationWords(total);
+  totalDurationCell.textContent = formatDurationWords(total);
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0) {
     projectTotals.replaceChildren(el('p', { className: 'muted', text: 'Пока пусто' }, []));
@@ -296,10 +297,10 @@ function renderRankedRow(name: string, duration: number, longest: number, total:
   const share = total > 0 ? Math.round(duration / total * 100) : 0;
   const bar = el('div', { className: 'ranked-bar' }, []);
   bar.style.width = `${longest > 0 ? duration / longest * 100 : 0}%`;
-  return el('div', { className: 'ranked-row', title: `${name}: ${formatDuration(duration)}, ${share}%` }, [
+  return el('div', { className: 'ranked-row', title: `${name}: ${formatDurationWords(duration)}, ${share}%` }, [
     el('span', { className: 'ranked-name', text: name }, []),
     el('div', { className: 'ranked-track' }, [bar]),
-    el('span', { className: 'ranked-value', text: formatDuration(duration) }, []),
+    el('span', { className: 'ranked-value', text: formatDurationWords(duration) }, []),
     el('span', { className: 'ranked-share', text: `${share}%` }, [])
   ]);
 }

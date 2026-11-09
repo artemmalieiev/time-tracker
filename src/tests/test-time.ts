@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { formatDate, formatDuration, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
+import { formatDate, formatDuration, formatDurationWords, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
 
 function testWeekStartsOnMonday() {
   const range = getRange('week', '', '', new Date(2026, 10, 12, 15));
@@ -41,6 +41,10 @@ function testDurations() {
   assert(formatDuration(0) === '0:00', 'expected zero');
   assert(formatDuration(65 * 60000 + 59000) === '1:05', 'expected seconds to be dropped');
   assert(formatTimer(3600000 + 5 * 60000 + 9000) === '1:05:09', 'expected the timer format');
+  assert(formatDurationWords(90 * 60000) === '1ч\u00a030мин', 'expected hours and minutes in words');
+  assert(formatDurationWords(45 * 60000 + 59000) === '45мин', 'expected minutes only under an hour');
+  assert(formatDurationWords(2 * 3600000) === '2ч', 'expected hours only on the hour');
+  assert(formatDurationWords(0) === '0мин', 'expected zero minutes');
 }
 
 function testRangeLabels() {

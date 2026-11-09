@@ -138,6 +138,25 @@ export function formatDuration(milliseconds: number) {
 }
 
 /**
+ * Formats a duration in milliseconds as hours and minutes in words, leaving out a zero part.
+ * The parts are joined with a non-breaking space so they never wrap apart.
+ *
+ * @example "1ч 30мин"
+ */
+export function formatDurationWords(milliseconds: number) {
+  const minutes = Math.floor(milliseconds / 60000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) {
+    return `${rest}мин`;
+  }
+  if (rest === 0) {
+    return `${hours}ч`;
+  }
+  return `${hours}ч\u00a0${rest}мин`;
+}
+
+/**
  * Formats a duration in milliseconds as hours, minutes and seconds.
  *
  * @example "1:05:09"
