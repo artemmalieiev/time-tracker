@@ -1,29 +1,114 @@
+/*
+  Fonts ship inside the extension so pages work offline. Only the Latin and Cyrillic subsets in
+  woff2 are loaded, since that covers Russian and English text and every Chrome reads woff2.
+*/
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../node_modules/@fontsource/golos-text/files/golos-text-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../node_modules/@fontsource/golos-text/files/golos-text-cyrillic-400-normal.woff2') format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../node_modules/@fontsource/golos-text/files/golos-text-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../node_modules/@fontsource/golos-text/files/golos-text-cyrillic-500-normal.woff2') format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/golos-text/files/golos-text-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Golos Text';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/golos-text/files/golos-text-cyrillic-600-normal.woff2') format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/unbounded/files/unbounded-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/unbounded/files/unbounded-cyrillic-600-normal.woff2') format('woff2');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+
+/*
+  "Stopwatch dial": a cool dial-white face, graphite ink, and one signal red that only ever
+  means "the clock is running", like the second hand on a railway clock. Paused is amber.
+  Blue is reserved for data marks (the per-project bars), so it never reads as a state.
+*/
 :root {
-  --bg: #ffffff;
-  --surface: #f6f7f9;
-  --border: #e3e5e8;
-  --text: #1f2328;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-text: #ffffff;
-  --running: #16a34a;
-  --paused: #d97706;
-  --danger: #dc2626;
-  --radius: 8px;
-  color-scheme: light dark;
+  --dial: #eef1f4;
+  --face: #ffffff;
+  --ink: #1c2128;
+  --muted: #5d6773;
+  --rule: #d5dbe1;
+  --rule-strong: #b7c0c9;
+  --signal: #d92b21;
+  --hold: #b06d00;
+  --data: #2a78d6;
+  --danger: #a3241c;
+  --on-ink: #ffffff;
+
+  --font-text: 'Golos Text', system-ui, sans-serif;
+  --font-numerals: 'Unbounded', 'Golos Text', system-ui, sans-serif;
+
+  --radius-control: 6px;
+  --radius-surface: 12px;
+
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #18191b;
-    --surface: #222326;
-    --border: #34363a;
-    --text: #e8e9eb;
-    --muted: #9ca3af;
-    --accent: #3b82f6;
-    --running: #22c55e;
-    --paused: #f59e0b;
-    --danger: #f87171;
+    --dial: #13171c;
+    --face: #1b2027;
+    --ink: #e7ebef;
+    --muted: #97a1ad;
+    --rule: #2b323b;
+    --rule-strong: #3d4651;
+    --signal: #ff5247;
+    --hold: #e3a33a;
+    --data: #3987e5;
+    --danger: #ff8a80;
+    --on-ink: #13171c;
+
+    color-scheme: dark;
   }
 }
 
@@ -32,42 +117,62 @@
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--dial);
+  color: var(--ink);
+  font: 400 14px/1.5 var(--font-text);
+  -webkit-font-smoothing: antialiased;
 }
 
 input, textarea, select, button { font: inherit; color: inherit; }
 
 input, textarea, select {
   width: 100%;
-  padding: 7px 9px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--face);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-control);
 }
-input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-textarea { resize: vertical; }
+textarea { resize: vertical; line-height: 1.6; }
+input::placeholder, textarea::placeholder { color: var(--muted); }
+input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--ink); }
+
+:focus-visible { outline: 2px solid var(--data); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline-offset: -1px; }
 
 button {
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  cursor: pointer;
+  padding: 7px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-control);
+  background: var(--face);
+  font-weight: 500;
   white-space: nowrap;
+  cursor: pointer;
 }
-button:hover { filter: brightness(0.96); }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button:hover { border-color: var(--ink); }
+button.primary { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+button.primary:hover { background: color-mix(in srgb, var(--ink) 86%, var(--dial)); }
+button.small { padding: 3px 9px; font-size: 13px; }
+button.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+button.quiet:hover { color: var(--ink); border-color: var(--rule-strong); }
 button.danger { color: var(--danger); }
-button.small { padding: 3px 8px; font-size: 12px; }
-button:disabled { opacity: 0.5; cursor: default; }
+button.danger:hover { border-color: var(--danger); }
+button:disabled { opacity: .5; cursor: default; }
+
+a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--rule-strong); }
+a:hover { text-decoration-color: currentColor; }
 
 .muted { color: var(--muted); }
-.label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.error { color: var(--danger); min-height: 1em; margin: 0; }
+.heading { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.error { margin: 0; min-height: 1em; color: var(--danger); }
+.numerals { font-family: var(--font-numerals); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 
-.status { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
-.status.running { color: var(--running); background: color-mix(in srgb, var(--running) 14%, transparent); }
-.status.paused { color: var(--paused); background: color-mix(in srgb, var(--paused) 14%, transparent); }
-.status.done { color: var(--muted); background: var(--surface); }
+/* State is a colored dot plus words in ink, so it never depends on color alone. */
+.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; }
+.status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.status.running::before { background: var(--signal); }
+.status.paused::before { background: var(--hold); }
+.status.done::before { border: 1.5px solid var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

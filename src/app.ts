@@ -23,6 +23,7 @@ import {
   formatDuration,
   formatHours,
   formatInputDateTime,
+  formatRangeLabel,
   formatTime,
   getRange,
   isPeriod,
@@ -202,23 +203,34 @@ function renderProjectOptions(projects: string[]) {
   projectOptions.replaceChildren(...projects.map(name => el('option', { value: name }, [])));
 }
 
-function actionButton(action: string, label: string) {
-  const className = action === 'delete' ? 'small danger' : 'small';
+function actionButton(action: string, label: string, className: string) {
   return el('button', { className, dataset: { action }, text: label }, []);
 }
 
 function renderActions(entry: Entry) {
   const buttons: HTMLButtonElement[] = [];
   if (entry.status === 'running') {
-    buttons.push(actionButton('pause', 'Пауза'));
+    buttons.push(actionButton('pause', 'Пауза', 'small'));
   } else {
-    buttons.push(actionButton('resume', 'Продолжить'));
+    buttons.push(actionButton('resume', 'Продолжить', 'small'));
   }
   if (entry.status === 'paused') {
-    buttons.push(actionButton('finish', 'Завершить'));
+    buttons.push(actionButton('finish', 'Завершить', 'small quiet'));
   }
-  buttons.push(actionButton('edit', 'Изменить'), actionButton('delete', 'Удалить'));
+  buttons.push(actionButton('edit', 'Изменить', 'small quiet'), actionButton('delete', 'Удалить', 'small quiet danger'));
   return buttons;
+}
+
+/**
+ * Title with the description under it, so a long description wraps under the task instead of
+ * squeezing a column of its own.
+ */
+function renderTask(entry: Entry) {
+  const parts = [el('div', { className: 'task-title', text: entry.title }, [])];
+  if (entry.description) {
+    parts.push(el('div', { className: 'task-description', text: entry.description }, []));
+  }
+  return parts;
 }
 
 function renderRow(entry: Entry, range: Range) {
@@ -236,9 +248,8 @@ function renderRow(entry: Entry, range: Range) {
 
   return el('tr', { dataset: { id: entry.id } }, [
     el('td', { className: 'nowrap', text: formatDate(start) }, []),
-    el('td', { text: entry.project || '—' }, []),
-    el('td', { className: 'title-cell', text: entry.title }, []),
-    el('td', { className: 'desc', text: entry.description }, []),
+    el('td', { className: 'project', text: entry.project || '—' }, []),
+    el('td', { className: 'task' }, renderTask(entry)),
     el('td', {}, [el('span', { className: `status ${entry.status}`, text: statusLabel(entry.status) }, [])]),
     el('td', { className: 'nowrap', text: formatTime(start) }, []),
     el('td', { className: 'nowrap', text: end }, []),
@@ -269,8 +280,28 @@ function renderDurations() {
   totalLabel.textContent = formatDuration(total);
   totalDurationCell.textContent = formatDuration(total);
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-  projectTotals.replaceChildren(...sorted.map(item =>
-    el('span', { className: 'chip' }, [item[0], el('b', { text: formatDuration(item[1]) }, [])])));
+  if (sorted.length === 0) {
+    projectTotals.replaceChildren(el('p', { className: 'muted', text: 'Пока пусто' }, []));
+    return;
+  }
+  const longest = sorted[0][1];
+  projectTotals.replaceChildren(...sorted.map(item => renderRankedRow(item[0], item[1], longest, total)));
+}
+
+/**
+ * One project in the ranked bars. Bars share one baseline and scale to the longest project, so
+ * their lengths compare directly. The share of the period is printed beside each one.
+ */
+function renderRankedRow(name: string, duration: number, longest: number, total: number) {
+  const share = total > 0 ? Math.round(duration / total * 100) : 0;
+  const bar = el('div', { className: 'ranked-bar' }, []);
+  bar.style.width = `${longest > 0 ? duration / longest * 100 : 0}%`;
+  return el('div', { className: 'ranked-row', title: `${name}: ${formatDuration(duration)}, ${share}%` }, [
+    el('span', { className: 'ranked-name', text: name }, []),
+    el('div', { className: 'ranked-track' }, [bar]),
+    el('span', { className: 'ranked-value', text: formatDuration(duration) }, []),
+    el('span', { className: 'ranked-share', text: `${share}%` }, [])
+  ]);
 }
 
 async function render() {
@@ -294,10 +325,10 @@ async function render() {
       rows.push(entry);
     }
     rows.sort((a, b) => firstStart(b, range) - firstStart(a, range));
-    rangeLabel.textContent = `${formatDate(range.start)} — ${formatDate(subDays(range.end, 1))}`;
+    rangeLabel.textContent = formatRangeLabel(range);
     rowsBody.replaceChildren(...rows.map(entry => renderRow(entry, range)));
   } else {
-    rangeLabel.textContent = 'Выберите корректный диапазон дат';
+    rangeLabel.textContent = 'Выберите даты: начало не позже конца';
     rowsBody.replaceChildren();
   }
 
@@ -397,7 +428,7 @@ function openEditor(entry: Entry | null) {
   segmentsContainer.replaceChildren();
 
   if (entry) {
-    editHeading.textContent = 'Редактирование';
+    editHeading.textContent = 'Изменить запись';
     titleInput.value = entry.title;
     descriptionInput.value = entry.description;
     projectInput.value = entry.project;
@@ -751,7 +782,7 @@ async function exportCsv() {
     buildCsv(lines),
     'text/csv;charset=utf-8'
   );
-  setStatus(`Готово: выгружено записей — ${exported.length}.${note}`);
+  setStatus(`CSV скачан, записей: ${exported.length}.${note}`);
 }
 
 async function runExport() {
@@ -777,7 +808,7 @@ function showExportError(error: unknown) {
 async function saveBackup() {
   const backup = await createBackup();
   downloadFile(`time-tracker-backup_${formatDate(new Date())}.json`, JSON.stringify(backup, null, 2), 'application/json');
-  setStatus(`Резервная копия сохранена: записей — ${backup.entries.length}.`);
+  setStatus(`Копия сохранена, записей: ${backup.entries.length}.`);
 }
 
 function parseJson(text: string) {

@@ -7,40 +7,45 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header>
-    <strong>Time Tracker</strong>
+  <header class="top">
+    <span class="brand">Time Tracker</span>
     <span id="user" class="muted"></span>
   </header>
 
-  <section id="running" class="card" hidden>
-    <div class="label">В работе</div>
-    <div id="run-title" class="title"></div>
+  <section id="running" class="stopwatch" hidden>
+    <div class="dial">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="ticks" cx="60" cy="60" r="54" pathLength="60"></circle>
+        <circle id="run-sweep" class="sweep" cx="60" cy="60" r="54" pathLength="60"></circle>
+      </svg>
+      <div id="run-timer" class="timer numerals" role="timer" aria-live="off">0:00:00</div>
+    </div>
+    <div id="run-title" class="run-title"></div>
     <div id="run-project" class="muted"></div>
-    <div id="run-timer" class="timer">0:00:00</div>
     <div class="row">
       <button id="btn-pause" class="primary">Пауза</button>
       <button id="btn-finish">Завершить</button>
     </div>
   </section>
 
-  <section id="paused-section" hidden>
-    <div class="label">На паузе</div>
+  <section id="paused-section" class="paused" hidden>
+    <h2 class="heading">На паузе</h2>
     <ul id="paused-list"></ul>
   </section>
 
-  <form id="new-form" class="card">
-    <div class="label">Новая задача</div>
-    <input id="f-title" placeholder="Название *" required maxlength="200" autocomplete="off">
-    <textarea id="f-desc" placeholder="Описание (необязательно)" rows="2"></textarea>
-    <input id="f-project" list="projects" placeholder="Проект" maxlength="100" autocomplete="off">
+  <form id="new-form" class="new-task">
+    <h2 class="heading">Новая задача</h2>
+    <input id="f-title" placeholder="Что делаете?" aria-label="Название" required maxlength="200" autocomplete="off">
+    <textarea id="f-desc" placeholder="Описание, если нужно" aria-label="Описание" rows="2"></textarea>
+    <input id="f-project" list="projects" placeholder="Проект" aria-label="Проект" maxlength="100" autocomplete="off">
     <datalist id="projects"></datalist>
-    <p id="form-error" class="error"></p>
-    <button type="submit" class="primary">Старт</button>
+    <p id="form-error" class="error" role="alert"></p>
+    <button type="submit" class="primary">Запустить таймер</button>
   </form>
 
   <footer>
     <a href="#" id="open-log">Открыть журнал</a>
-    <a href="#" id="add-manual">Добавить вручную</a>
+    <a href="#" id="add-manual">Добавить запись вручную</a>
   </footer>
 
   <script type="module" src="popup.js"></script>

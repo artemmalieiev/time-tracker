@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { formatDate, formatDuration, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
+import { formatDate, formatDuration, formatRangeLabel, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
 
 function testWeekStartsOnMonday() {
   const range = getRange('week', '', '', new Date(2026, 10, 12, 15));
@@ -43,7 +43,19 @@ function testDurations() {
   assert(formatTimer(3600000 + 5 * 60000 + 9000) === '1:05:09', 'expected the timer format');
 }
 
+function testRangeLabels() {
+  const week = getRange('week', '', '', new Date(2026, 10, 12));
+  assert(week !== null && formatRangeLabel(week) === '9–15 ноября 2026', 'expected a range inside one month');
+  const across = getRange('custom', '2026-10-28', '2026-11-03', new Date());
+  assert(across !== null && formatRangeLabel(across) === '28 октября – 3 ноября 2026', 'expected a range across months');
+  const newYear = getRange('custom', '2026-12-30', '2027-01-02', new Date());
+  assert(newYear !== null && formatRangeLabel(newYear) === '30 декабря 2026 – 2 января 2027', 'expected a range across years');
+  const day = getRange('today', '', '', new Date(2026, 10, 12));
+  assert(day !== null && formatRangeLabel(day) === '12 ноября 2026', 'expected a single day');
+}
+
 testWeekStartsOnMonday();
+testRangeLabels();
 testWeekOnSunday();
 testLastMonthInJanuary();
 testCustomRange();

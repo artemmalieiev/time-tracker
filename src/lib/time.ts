@@ -1,4 +1,5 @@
-import { addDays, addMonths, format, isValid, parse, startOfDay, startOfMonth, startOfWeek, subMonths } from 'date-fns';
+import { addDays, addMonths, format, isSameMonth, isSameYear, isValid, parse, startOfDay, startOfMonth, startOfWeek, subDays, subMonths } from 'date-fns';
+import { ru } from 'date-fns/locale/ru';
 
 /**
  * A stretch of time, including start and excluding end.
@@ -98,6 +99,26 @@ export function formatDate(date: Date) {
 
 export function formatTime(date: Date) {
   return format(date, 'HH:mm');
+}
+
+/**
+ * The range as people say it, with the last day included.
+ *
+ * @example "9–15 ноября 2026"
+ */
+export function formatRangeLabel(range: Range) {
+  const first = range.start;
+  const last = subDays(range.end, 1);
+  if (!isSameYear(first, last)) {
+    return `${format(first, 'd MMMM yyyy', { locale: ru })} – ${format(last, 'd MMMM yyyy', { locale: ru })}`;
+  }
+  if (!isSameMonth(first, last)) {
+    return `${format(first, 'd MMMM', { locale: ru })} – ${format(last, 'd MMMM yyyy', { locale: ru })}`;
+  }
+  if (first.getDate() === last.getDate()) {
+    return format(first, 'd MMMM yyyy', { locale: ru });
+  }
+  return `${format(first, 'd')}–${format(last, 'd MMMM yyyy', { locale: ru })}`;
 }
 
 export function formatDateTime(date: Date) {

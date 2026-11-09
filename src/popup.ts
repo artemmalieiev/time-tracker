@@ -9,6 +9,7 @@ const runningSection = byId('running', HTMLElement);
 const runningTitle = byId('run-title', HTMLDivElement);
 const runningProject = byId('run-project', HTMLDivElement);
 const runningTimer = byId('run-timer', HTMLDivElement);
+const runningSweep = byId('run-sweep', SVGCircleElement);
 const pauseButton = byId('btn-pause', HTMLButtonElement);
 const finishButton = byId('btn-finish', HTMLButtonElement);
 const pausedSection = byId('paused-section', HTMLElement);
@@ -27,20 +28,26 @@ let tick = 0;
 
 function renderTimer() {
   if (running) {
-    runningTimer.textContent = formatTimer(entryDuration(running, null, Date.now()));
+    const duration = entryDuration(running, null, Date.now());
+    runningTimer.textContent = formatTimer(duration);
+    // The red arc moves like a quartz second hand: one tick per second, a full turn a minute.
+    const seconds = Math.floor(duration / 1000) % 60;
+    runningSweep.style.strokeDasharray = `${seconds} 60`;
   }
 }
 
 function renderPausedItem(entry: Entry) {
   const duration = formatDuration(entryDuration(entry, null, Date.now()));
-  const meta = `${entry.project || 'Без проекта'} · ${duration}`;
   return el('li', {}, [
-    el('div', { className: 'info' }, [
-      el('div', { className: 'name', text: entry.title, title: entry.title }, []),
-      el('div', { className: 'meta muted', text: meta }, [])
+    el('div', { className: 'line' }, [
+      el('span', { className: 'name', text: entry.title, title: entry.title }, []),
+      el('span', { className: 'duration', text: duration }, [])
     ]),
-    el('button', { className: 'small primary', dataset: { action: 'resume', id: entry.id }, text: 'Продолжить' }, []),
-    el('button', { className: 'small', dataset: { action: 'finish', id: entry.id }, text: 'Завершить' }, [])
+    el('div', { className: 'line' }, [
+      el('span', { className: 'project muted', text: entry.project || 'Без проекта' }, []),
+      el('button', { className: 'small', dataset: { action: 'resume', id: entry.id }, text: 'Продолжить' }, []),
+      el('button', { className: 'small quiet', dataset: { action: 'finish', id: entry.id }, text: 'Завершить' }, [])
+    ])
   ]);
 }
 

@@ -54,7 +54,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Props, 
  * Finds an element by id and checks its type. A missing element means the page markup and the
  * script disagree, which is a bug, so we throw.
  */
-export function byId<T extends HTMLElement>(id: string, type: new () => T) {
+export function byId<T extends Element>(id: string, type: new () => T) {
   const element = document.getElementById(id);
   if (!(element instanceof type)) {
     throw new Error(`Expected #${id} to be a ${type.name}`);
