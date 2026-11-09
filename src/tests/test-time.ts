@@ -1,0 +1,51 @@
+import assert from 'node:assert';
+import { formatDate, formatDuration, formatTimer, getRange, parseInputDate, parseInputDateTime } from '../lib/time';
+
+function testWeekStartsOnMonday() {
+  const range = getRange('week', '', '', new Date(2026, 10, 12, 15));
+  assert(range !== null, 'expected a range');
+  assert(formatDate(range.start) === '2026-11-09', 'expected the week to start on Monday');
+  assert(formatDate(range.end) === '2026-11-16', 'expected the week to end before the next Monday');
+}
+
+function testWeekOnSunday() {
+  const range = getRange('week', '', '', new Date(2026, 10, 15, 23));
+  assert(range !== null, 'expected a range');
+  assert(formatDate(range.start) === '2026-11-09', 'expected Sunday to belong to the week that started on Monday');
+}
+
+function testLastMonthInJanuary() {
+  const range = getRange('lastMonth', '', '', new Date(2026, 0, 10));
+  assert(range !== null, 'expected a range');
+  assert(formatDate(range.start) === '2025-12-01', 'expected last month to be December of last year');
+  assert(formatDate(range.end) === '2026-01-01', 'expected last month to end where January starts');
+}
+
+function testCustomRange() {
+  const range = getRange('custom', '2026-11-01', '2026-11-03', new Date());
+  assert(range !== null, 'expected a range');
+  assert(formatDate(range.end) === '2026-11-04', 'expected the last day to be included');
+  assert(getRange('custom', '2026-11-05', '2026-11-03', new Date()) === null, 'expected a backwards range to be rejected');
+  assert(getRange('custom', '', '2026-11-03', new Date()) === null, 'expected a missing start to be rejected');
+}
+
+function testStrictParsing() {
+  assert(parseInputDate('2026-02-30') === null, 'expected February 30 to be rejected');
+  assert(parseInputDate('junk') === null, 'expected junk to be rejected');
+  assert(parseInputDateTime('2026-11-09T25:00') === null, 'expected hour 25 to be rejected');
+  const parsed = parseInputDateTime('2026-11-09T08:30');
+  assert(parsed !== null && parsed.getHours() === 8 && parsed.getMinutes() === 30, 'expected local time');
+}
+
+function testDurations() {
+  assert(formatDuration(0) === '0:00', 'expected zero');
+  assert(formatDuration(65 * 60000 + 59000) === '1:05', 'expected seconds to be dropped');
+  assert(formatTimer(3600000 + 5 * 60000 + 9000) === '1:05:09', 'expected the timer format');
+}
+
+testWeekStartsOnMonday();
+testWeekOnSunday();
+testLastMonthInJanuary();
+testCustomRange();
+testStrictParsing();
+testDurations();

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Time Tracker</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <strong>Time Tracker</strong>
+    <span id="user" class="muted"></span>
+  </header>
+
+  <section id="running" class="card" hidden>
+    <div class="label">В работе</div>
+    <div id="run-title" class="title"></div>
+    <div id="run-project" class="muted"></div>
+    <div id="run-timer" class="timer">0:00:00</div>
+    <div class="row">
+      <button id="btn-pause" class="primary">Пауза</button>
+      <button id="btn-finish">Завершить</button>
+    </div>
+  </section>
+
+  <section id="paused-section" hidden>
+    <div class="label">На паузе</div>
+    <ul id="paused-list"></ul>
+  </section>
+
+  <form id="new-form" class="card">
+    <div class="label">Новая задача</div>
+    <input id="f-title" placeholder="Название *" required maxlength="200" autocomplete="off">
+    <textarea id="f-desc" placeholder="Описание (необязательно)" rows="2"></textarea>
+    <input id="f-project" list="projects" placeholder="Проект" maxlength="100" autocomplete="off">
+    <datalist id="projects"></datalist>
+    <p id="form-error" class="error"></p>
+    <button type="submit" class="primary">Старт</button>
+  </form>
+
+  <footer>
+    <a href="#" id="open-log">Открыть журнал</a>
+    <a href="#" id="add-manual">Добавить вручную</a>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

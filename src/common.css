@@ -1,0 +1,73 @@
+:root {
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --border: #e3e5e8;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-text: #ffffff;
+  --running: #16a34a;
+  --paused: #d97706;
+  --danger: #dc2626;
+  --radius: 8px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18191b;
+    --surface: #222326;
+    --border: #34363a;
+    --text: #e8e9eb;
+    --muted: #9ca3af;
+    --accent: #3b82f6;
+    --running: #22c55e;
+    --paused: #f59e0b;
+    --danger: #f87171;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+input, textarea, select, button { font: inherit; color: inherit; }
+
+input, textarea, select {
+  width: 100%;
+  padding: 7px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+textarea { resize: vertical; }
+
+button {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover { filter: brightness(0.96); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.danger { color: var(--danger); }
+button.small { padding: 3px 8px; font-size: 12px; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+.muted { color: var(--muted); }
+.label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.error { color: var(--danger); min-height: 1em; margin: 0; }
+
+.status { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+.status.running { color: var(--running); background: color-mix(in srgb, var(--running) 14%, transparent); }
+.status.paused { color: var(--paused); background: color-mix(in srgb, var(--paused) 14%, transparent); }
+.status.done { color: var(--muted); background: var(--surface); }

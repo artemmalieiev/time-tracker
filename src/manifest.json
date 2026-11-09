@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Time Tracker",
+  "version": "2.0.0",
+  "description": "Track time spent on tasks: start, pause, resume, edit, filter by project and export to CSV.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr6dTtK9oakTzNz7lgd2UKym7wQHJPbVCoe062+TFU1IuzSJhHQ2v+xYliGmT4cVW80zTIoTcnR66n90jZ5HHoYvFyn2gwKYx6Zn9kDlnGqTvxN3BNsZha0FS+pNg88g9yxaah+GsnQHI3d2FvM3+BDeRwNx+dG+9uwh72QPHhNOdmNEnwcuBo4JYAk5g//iSjAmBE1hEYfgjS2HOxIZTO1GZFz4W96BTOoWhZEFcWv010rYzzjKi4ojwtzmA+5JJ4i5sZ5vWPWoSsr6ZrHSLwW7bbmDYyweuTVlkcsCJXepgVUmVrwPKhIYjjf2RXuaamnsiI/+2WOlhnLKEOJE+WwIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "identity",
+    "identity.email",
+    "alarms",
+    "downloads"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Time Tracker",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}

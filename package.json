@@ -1,0 +1,30 @@
+{
+  "name": "@integrabeauty/time-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension for tracking time spent on tasks",
+  "type": "module",
+  "scripts": {
+    "build": "node build.ts",
+    "compile": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "lint": "eslint",
+    "fix": "eslint --fix",
+    "test": "node dist/tests/index.js"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "date-fns": "^4.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^22.20.5",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-jsdoc": "^65.4.5",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

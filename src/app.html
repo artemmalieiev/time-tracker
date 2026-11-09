@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Журнал времени</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Журнал времени</h1>
+    <span id="user" class="muted"></span>
+    <div class="backup">
+      <label class="check" title="Раз в день, если были изменения. Хранятся последние 14 копий.">
+        <input type="checkbox" id="auto-backup"> Автокопия
+      </label>
+      <a href="#" id="auto-backup-info" class="muted auto-info"></a>
+      <button id="btn-backup" title="Скачать все ваши записи в файл JSON">Резервная копия</button>
+      <button id="btn-restore" title="Загрузить записи из файла резервной копии">Восстановить</button>
+      <input type="file" id="restore-file" accept=".json,application/json" hidden>
+    </div>
+  </header>
+
+  <main>
+    <section class="toolbar">
+      <div id="periods" class="periods" role="radiogroup" aria-label="Период">
+        <label><input type="radio" name="period" value="today"> Сегодня</label>
+        <label><input type="radio" name="period" value="week"> Неделя</label>
+        <label><input type="radio" name="period" value="month"> Месяц</label>
+        <label><input type="radio" name="period" value="lastMonth"> Прошлый месяц</label>
+        <label><input type="radio" name="period" value="custom"> Диапазон</label>
+      </div>
+      <div id="custom-range" class="custom-range" hidden>
+        <input type="date" id="from" aria-label="С даты">
+        <span class="muted">—</span>
+        <input type="date" id="to" aria-label="По дату">
+      </div>
+      <select id="project-filter" aria-label="Проект"></select>
+      <div class="spacer"></div>
+      <button id="btn-add">+ Добавить</button>
+      <label class="check"><input type="checkbox" id="translate" checked> Перевести на английский</label>
+      <button id="btn-export" class="primary">Экспорт CSV</button>
+    </section>
+
+    <p id="export-status" class="muted export-status"></p>
+
+    <section class="summary">
+      <div class="total">
+        <div class="label">Итого за период</div>
+        <div id="total" class="total-value">0:00</div>
+        <div id="range-label" class="muted"></div>
+      </div>
+      <div id="by-project" class="by-project"></div>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Проект</th>
+            <th>Название</th>
+            <th>Описание</th>
+            <th>Статус</th>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th class="num">Время</th>
+            <th class="num" title="Количество интервалов работы">Инт.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="muted empty" hidden>Нет записей за выбранный период.</p>
+    </div>
+  </main>
+
+  <dialog id="edit-dialog">
+    <form id="edit-form" novalidate>
+      <h2 id="edit-heading">Редактирование</h2>
+      <label>Название *
+        <input id="e-title" maxlength="200" autocomplete="off">
+      </label>
+      <label>Описание
+        <textarea id="e-desc" rows="3"></textarea>
+      </label>
+      <label>Проект
+        <input id="e-project" list="projects" maxlength="100" autocomplete="off">
+      </label>
+      <datalist id="projects"></datalist>
+
+      <div class="segments-head">
+        <span class="label">Интервалы работы</span>
+        <button type="button" id="add-segment" class="small">+ интервал</button>
+      </div>
+      <p class="muted hint">Пустой «конец» у последнего интервала — задача сейчас в работе.</p>
+      <div id="segments"></div>
+
+      <p id="edit-error" class="error"></p>
+      <div class="dialog-actions">
+        <button type="button" id="edit-cancel">Отмена</button>
+        <button type="submit" class="primary">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

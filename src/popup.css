@@ -1,0 +1,29 @@
+body { width: 340px; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+header #user { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+
+#running { border-color: var(--running); }
+.title { font-weight: 600; font-size: 15px; word-break: break-word; }
+.timer { font-size: 28px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.row { display: flex; gap: 8px; }
+.row button { flex: 1; }
+
+#paused-section { display: flex; flex-direction: column; gap: 6px; }
+#paused-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+#paused-list li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+}
+#paused-list .info { flex: 1; min-width: 0; }
+#paused-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#paused-list .meta { font-size: 12px; }
+
+footer { display: flex; justify-content: space-between; }
+footer a { color: var(--accent); text-decoration: none; font-size: 13px; }
+footer a:hover { text-decoration: underline; }
