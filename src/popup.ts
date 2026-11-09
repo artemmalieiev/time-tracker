@@ -14,6 +14,7 @@ const pauseButton = byId('btn-pause', HTMLButtonElement);
 const finishButton = byId('btn-finish', HTMLButtonElement);
 const pausedSection = byId('paused-section', HTMLElement);
 const pausedList = byId('paused-list', HTMLUListElement);
+const showFormButton = byId('show-form', HTMLButtonElement);
 const form = byId('new-form', HTMLFormElement);
 const titleInput = byId('f-title', HTMLInputElement);
 const descriptionInput = byId('f-desc', HTMLTextAreaElement);
@@ -25,6 +26,10 @@ const addManualLink = byId('add-manual', HTMLAnchorElement);
 
 let running: Entry | null = null;
 let tick = 0;
+
+// Chrome caps a popup at 600px tall, so while a task runs the new task form stays folded behind a
+// button until the person asks for it.
+let formOpen = false;
 
 function renderTimer() {
   if (running) {
@@ -65,6 +70,10 @@ async function render() {
     tick = setInterval(renderTimer, 1000);
   }
 
+  const folded = !!running && !formOpen;
+  form.hidden = folded;
+  showFormButton.hidden = !folded;
+
   pausedSection.hidden = paused.length === 0;
   pausedList.replaceChildren(...paused.map(renderPausedItem));
   projectOptions.replaceChildren(...projects.map(name => el('option', { value: name }, [])));
@@ -92,6 +101,7 @@ function runPausedAction(action: string | undefined, id: string) {
 async function submitNewTask() {
   await startTask(titleInput.value, descriptionInput.value, projectInput.value);
   form.reset();
+  formOpen = false;
 }
 
 function showFormError(error: unknown) {
@@ -120,6 +130,13 @@ pausedList.addEventListener('click', function onPausedClick(event) {
   if (target instanceof HTMLButtonElement && target.dataset.id) {
     runPausedAction(target.dataset.action, target.dataset.id);
   }
+});
+
+showFormButton.addEventListener('click', function onShowFormClick() {
+  formOpen = true;
+  form.hidden = false;
+  showFormButton.hidden = true;
+  titleInput.focus();
 });
 
 form.addEventListener('submit', function onSubmit(event) {
