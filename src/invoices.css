@@ -1,0 +1,131 @@
+.section-title { margin: 0; font-size: 16px; font-weight: 600; }
+.section-gap { margin-top: 32px; margin-bottom: 12px; }
+#list-view > .toolbar:first-child { margin-bottom: 0; }
+td.actions a { margin-right: 6px; font-size: 13px; }
+
+/* Editor on the left, the paper on the right. They stack on narrow windows. */
+.editor-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 640px); gap: 24px;
+  margin-top: 16px; align-items: start;
+}
+.editor {
+  display: flex; flex-direction: column; gap: 12px; padding: 20px;
+  background: var(--face); border: 1px solid var(--rule); border-radius: var(--radius-surface);
+}
+.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.field-grid label, .dialog-form > label, .field-row label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
+.items-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+.items-actions { display: flex; gap: 6px; }
+.hint-below { margin: -6px 0 0; font-size: 13px; }
+.items { display: flex; flex-direction: column; gap: 6px; }
+.empty-items { margin: 8px 0; }
+
+/* A line in two rows: tick, title and remove on top, then kind, quantity, rate and amount. */
+.item {
+  display: grid; grid-template-columns: auto 9em auto minmax(5.5em, 7em) minmax(0, 1fr) auto;
+  grid-template-areas: "check title title title title remove" ". kind quantity rate amount amount";
+  align-items: center; gap: 6px 8px; padding: 8px 0; border-bottom: 1px solid var(--rule);
+}
+.item > input[type="checkbox"] { grid-area: check; }
+.item-main { grid-area: title; }
+.item > select { grid-area: kind; }
+.item > .quantity { grid-area: quantity; }
+.item > .rate { grid-area: rate; }
+.item > .amount { grid-area: amount; }
+.item > button { grid-area: remove; }
+.item:last-child { border-bottom: 0; }
+.item-main { display: flex; flex-direction: column; min-width: 0; }
+.item-note:empty { display: none; }
+.item-note { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; }
+.item-note button { padding: 0 6px; font-size: 12px; }
+.item select, .item input { padding: 5px 7px; }
+.quantity { display: flex; align-items: center; gap: 4px; }
+.quantity input { width: 4.2em; text-align: right; font-variant-numeric: tabular-nums; appearance: textfield; }
+.quantity input::-webkit-inner-spin-button, .quantity input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.item .rate { text-align: right; font-variant-numeric: tabular-nums; }
+.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
+
+.dialog-form { display: flex; flex-direction: column; gap: 12px; }
+.dialog-form h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.dialog-form > p { margin: 0; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/*
+  The paper copies the sample invoice: plain Helvetica, gray labels, a dark table header and a
+  shaded balance box. It stays white in dark mode, because it is a printed document.
+*/
+.preview { position: sticky; top: 16px; }
+.invoice-paper {
+  --paper-ink: #333333;
+  --paper-muted: #8a8a8a;
+  --paper-band: #3b3b3b;
+  --paper-shade: #f3f3f3;
+
+  aspect-ratio: 8.5 / 11; padding: 6% 7%;
+  background: #ffffff; color: var(--paper-ink);
+  font: 400 11px/1.35 Helvetica, Arial, sans-serif;
+  border: 1px solid var(--rule); border-radius: 4px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / .12);
+  color-scheme: light;
+  overflow: hidden;
+}
+.paper-head, .paper-middle { display: flex; justify-content: space-between; gap: 24px; }
+.paper-middle { margin-top: 18px; align-items: flex-end; }
+.paper-party { min-width: 0; }
+.paper-name { font-weight: 700; font-size: 1.08em; }
+.paper-lines { white-space: pre-line; overflow-wrap: anywhere; }
+.paper-label { color: var(--paper-muted); margin-bottom: 2px; }
+.paper-heading { text-align: right; flex: none; }
+.paper-title { font-size: 3.3em; line-height: 1; letter-spacing: .01em; }
+.paper-number { margin-top: 4px; color: var(--paper-muted); font-size: 1.35em; padding-right: 4px; }
+
+.paper-meta, .paper-totals { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0; min-width: 45%; }
+.paper-row { display: contents; }
+.paper-row dt { padding: 4px 32px 4px 12px; color: var(--paper-muted); text-align: right; }
+.paper-row dd { margin: 0; padding: 4px 12px 4px 0; text-align: right; min-width: 8em; }
+.paper-balance dt, .paper-balance dd { margin-top: 6px; padding-top: 8px; padding-bottom: 8px; background: var(--paper-shade); color: var(--paper-ink); font-weight: 700; font-size: 1.18em; }
+.paper-balance dt { border-radius: 4px 0 0 4px; }
+.paper-balance dd { border-radius: 0 4px 4px 0; }
+
+.paper-items { width: 100%; margin-top: 28px; border-collapse: separate; border-spacing: 0; }
+.paper-items th, .paper-items td { padding: 6px 12px; border: 0; text-align: left; vertical-align: top; }
+.paper-items th { background: var(--paper-band); color: #ffffff; font-weight: 400; font-size: 1em; }
+.paper-items th:first-child { border-radius: 4px 0 0 4px; width: 55%; }
+.paper-items .paper-unit { padding-left: 0; padding-right: 4px; }
+.paper-items th:last-child { border-radius: 0 4px 4px 0; }
+.paper-items td { padding-top: 8px; }
+.paper-items .paper-item { font-weight: 700; }
+.paper-items .paper-num { text-align: right; white-space: nowrap; }
+.paper-items tbody tr:hover { background: none; }
+.paper-totals { margin: 40px 0 0 auto; width: max-content; }
+
+@media (max-width: 1100px) {
+  .editor-layout { grid-template-columns: minmax(0, 1fr); }
+  .preview { position: static; }
+}
+
+@media (max-width: 760px) {
+  .field-grid, .field-row { grid-template-columns: minmax(0, 1fr); }
+  .item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "check title remove" ". kind kind" ". quantity quantity" ". rate amount";
+  }
+}
+
+/*
+  Printing shows only the paper, edge to edge. A zero page margin also stops Chrome from adding
+  its own header and footer with the URL and date.
+*/
+@media print {
+  @page { margin: 0; }
+  body { background: #ffffff; min-height: 0; }
+  .top, .no-print, #list-view { display: none !important; }
+  main { max-width: none; margin: 0; padding: 0; }
+  .editor-layout { display: block; margin: 0; }
+  .preview { position: static; }
+  .invoice-paper {
+    aspect-ratio: auto; padding: .55in .7in; font-size: 10.5pt;
+    border: 0; border-radius: 0; box-shadow: none;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}

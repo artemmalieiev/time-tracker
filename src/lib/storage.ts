@@ -1,3 +1,4 @@
+import { getBackupData, restore as restoreInvoices } from './invoices';
 import type { Range } from './time';
 import { getKey } from './user';
 
@@ -420,29 +421,41 @@ export function reportDuration(entry: Entry, range: Range | null, now: number) {
 }
 
 /**
- * A backup of the signed-in person's entries and projects, ready to be saved as JSON.
+ * A backup of the signed-in person's entries, projects, payees, clients and invoices, ready to be
+ * saved as JSON.
  */
 export async function createBackup() {
   const entries = await getEntries();
   const projects = await getProjects();
   const user = await getKey();
+  const invoiceData = await getBackupData();
   return {
     app: 'time-tracker',
+    clients: invoiceData.clients,
     entries,
     exported_at: new Date().toISOString(),
+    invoices: invoiceData.invoices,
+    payees: invoiceData.payees,
     projects,
     user,
-    version: 2
+    version: 3
   };
 }
 
 /**
- * The outer shape of a backup file. Version 1 used camelCase keys inside the entries.
+ * The outer shape of a backup file. Version 1 used camelCase keys inside the entries, and
+ * versions before 3 have no payees, clients or invoices.
  */
 interface BackupFile {
   app: 'time-tracker';
 
+  clients?: unknown;
+
   entries: unknown[];
+
+  invoices?: unknown;
+
+  payees?: unknown;
 
   version: number;
 }
@@ -532,28 +545,31 @@ function hasValidSegments(entry: Entry) {
 }
 
 /**
- * Merges a backup into the signed-in person's entries and returns what happened to them.
+ * Merges a backup into the signed-in person's data and returns what happened to the entries.
  *
  * Entries are matched by id. A new one is added, and an existing one is replaced only when the
  * copy in the backup is newer. Entries missing from the backup stay. Everything restored belongs
  * to the person signed in now, so a backup can move entries to another account or computer.
+ * Payees, clients and invoices merge the same way.
  */
-export function restoreBackup(backup: unknown) {
+export async function restoreBackup(backup: unknown) {
   if (!isBackupFile(backup)) {
     throw new Error('Это не файл резервной копии Time Tracker');
   }
-  if (backup.version > 2) {
+  if (backup.version > 3) {
     throw new Error('Копия сделана более новой версией расширения — сначала обновите расширение');
   }
 
-  return mutate(function merge(entries, user, now) {
-    const counts = { added: 0, invalid: 0, unchanged: 0, updated: 0 };
+  const counts = await mutate(function merge(entries, user, now) {
+    const result = { added: 0, invalid: 0, unchanged: 0, updated: 0 };
     for (const value of backup.entries) {
-      mergeOne(entries, user, value, counts);
+      mergeOne(entries, user, value, result);
     }
     keepOneRunning(entries, user, now);
-    return counts;
+    return result;
   });
+  await restoreInvoices(backup);
+  return counts;
 }
 
 type MergeCounts = { added: number; invalid: number; unchanged: number; updated: number; };

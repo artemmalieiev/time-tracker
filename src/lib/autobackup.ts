@@ -92,8 +92,8 @@ export async function setEnabled(enabled: boolean) {
 /**
  * A cheap fingerprint of the backed up data, so we can skip a backup when nothing changed.
  */
-function fingerprint(user: string, entries: unknown, projects: unknown) {
-  const text = JSON.stringify([user, entries, projects]);
+function fingerprint(data: unknown[]) {
+  const text = JSON.stringify(data);
   let hash = 5381;
   for (let index = 0; index < text.length; index++) {
     hash = ((hash << 5) + hash + text.charCodeAt(index)) | 0;
@@ -116,11 +116,12 @@ export async function run() {
   }
 
   const backup = await createBackup();
-  if (backup.entries.length === 0) {
+  if (backup.entries.length === 0 && backup.invoices.length === 0) {
     return 'empty';
   }
 
-  const hash = fingerprint(backup.user, backup.entries, backup.projects);
+  // The export time changes on every call, so it stays out of the fingerprint.
+  const hash = fingerprint([backup.user, backup.entries, backup.projects, backup.payees, backup.clients, backup.invoices]);
   if (hash === meta.last_hash) {
     return 'unchanged';
   }

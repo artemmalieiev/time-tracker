@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Инвойсы</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="invoices.css">
+</head>
+<body>
+  <header class="top">
+    <div class="identity">
+      <h1>Инвойсы</h1>
+      <a href="app.html">Журнал</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="list-view" hidden>
+      <div class="toolbar">
+        <h2 class="section-title">Выставленные</h2>
+        <div class="spacer"></div>
+        <button id="btn-new-invoice" title="Инвойс без строк из журнала">Пустой инвойс</button>
+      </div>
+      <p id="list-status" class="status-line" role="status"></p>
+      <div class="sheet">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Дата</th>
+                <th>Клиент</th>
+                <th>Исполнитель</th>
+                <th class="num">Сумма</th>
+                <th><span class="visually-hidden">Действия</span></th>
+              </tr>
+            </thead>
+            <tbody id="invoice-rows"></tbody>
+          </table>
+        </div>
+        <p id="invoices-empty" class="empty" hidden>Инвойсов пока нет. Отфильтруйте задачи в журнале и нажмите «Инвойс».</p>
+      </div>
+
+      <div class="toolbar section-gap">
+        <h2 class="section-title">Клиенты</h2>
+        <div class="spacer"></div>
+        <button id="btn-add-client">Добавить клиента</button>
+      </div>
+      <div class="sheet">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Клиент</th>
+                <th>Исполнитель по умолчанию</th>
+                <th class="num">Ставка в час</th>
+                <th class="num">Срок оплаты</th>
+                <th><span class="visually-hidden">Действия</span></th>
+              </tr>
+            </thead>
+            <tbody id="client-rows"></tbody>
+          </table>
+        </div>
+        <p id="clients-empty" class="empty" hidden>Добавьте клиента: его реквизиты пойдут в «Bill To», а валюта и ставка станут значениями по умолчанию.</p>
+      </div>
+
+      <div class="toolbar section-gap">
+        <h2 class="section-title">Исполнители</h2>
+        <div class="spacer"></div>
+        <button id="btn-add-payee">Добавить исполнителя</button>
+      </div>
+      <div class="sheet">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Исполнитель</th>
+                <th>Реквизиты</th>
+                <th><span class="visually-hidden">Действия</span></th>
+              </tr>
+            </thead>
+            <tbody id="payee-rows"></tbody>
+          </table>
+        </div>
+        <p id="payees-empty" class="empty" hidden>Добавьте исполнителя: имя и банковские реквизиты, которые печатаются в шапке инвойса.</p>
+      </div>
+    </section>
+
+    <section id="edit-view" hidden>
+      <div class="toolbar no-print">
+        <a href="#list">← Все инвойсы</a>
+        <div class="spacer"></div>
+        <span id="save-state" class="muted"></span>
+        <button id="btn-delete-invoice" class="quiet danger">Удалить</button>
+        <button id="btn-print" class="primary" title="Откроется печать: выберите «Сохранить как PDF»">Скачать PDF</button>
+      </div>
+
+      <div class="editor-layout">
+        <form id="invoice-form" class="editor no-print" novalidate>
+          <div class="field-grid">
+            <label>Клиент
+              <select id="i-client"></select>
+            </label>
+            <label>Исполнитель
+              <select id="i-payee"></select>
+            </label>
+            <label>Номер
+              <input type="number" id="i-number" min="1" step="1" inputmode="numeric">
+            </label>
+            <label>Валюта
+              <select id="i-currency"></select>
+            </label>
+            <label>Дата
+              <input type="date" id="i-date">
+            </label>
+            <label>Оплатить до
+              <input type="date" id="i-due">
+            </label>
+            <label>Ставка в час
+              <input id="i-rate" inputmode="decimal" autocomplete="off">
+            </label>
+            <label>Налог, %
+              <input id="i-tax" inputmode="decimal" autocomplete="off">
+            </label>
+          </div>
+
+          <div class="items-head">
+            <h3 class="heading">Позиции</h3>
+            <div class="items-actions">
+              <button type="button" id="btn-merge" class="small" disabled title="Отметьте две или больше почасовых позиций">Объединить</button>
+              <button type="button" id="btn-add-item" class="small">Добавить позицию</button>
+            </div>
+          </div>
+          <p class="muted hint-below">Позиции — копия времени из журнала. Объединение, разъединение и правки меняют только инвойс, задачи в журнале остаются как были. Пустая ставка у почасовой позиции — ставка инвойса.</p>
+          <div id="items" class="items"></div>
+          <p id="editor-error" class="error" role="alert"></p>
+        </form>
+
+        <div class="preview">
+          <article id="paper" class="invoice-paper" aria-label="Инвойс"></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="client-dialog">
+    <form id="client-form" class="dialog-form" novalidate>
+      <h2 id="client-heading">Клиент</h2>
+      <label>Название
+        <input id="c-name" maxlength="200" autocomplete="off" required>
+      </label>
+      <label>Реквизиты
+        <textarea id="c-details" rows="3" placeholder="Регистрационный номер&#10;Адрес"></textarea>
+      </label>
+      <label>Исполнитель по умолчанию
+        <select id="c-payee"></select>
+      </label>
+      <div class="field-row">
+        <label>Валюта
+          <select id="c-currency"></select>
+        </label>
+        <label>Ставка в час
+          <input id="c-rate" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        </label>
+        <label>Срок оплаты, дней
+          <input type="number" id="c-due" min="0" step="1" inputmode="numeric">
+        </label>
+      </div>
+      <p id="client-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" id="client-cancel">Отмена</button>
+        <button type="submit" class="primary">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="payee-dialog">
+    <form id="payee-form" class="dialog-form" novalidate>
+      <h2 id="payee-heading">Исполнитель</h2>
+      <label>Имя
+        <input id="p-name" maxlength="200" autocomplete="off" required>
+      </label>
+      <label>Реквизиты
+        <textarea id="p-details" rows="5" placeholder="IBAN&#10;UA00 0000 0000 0000 0000 0000 000&#10;SWIFT/BIC code&#10;XXXXXXXX&#10;Город, страна, адрес"></textarea>
+      </label>
+      <p class="muted hint">Печатаются под именем построчно, как введены.</p>
+      <p id="payee-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" id="payee-cancel">Отмена</button>
+        <button type="submit" class="primary">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="merge-dialog">
+    <form id="merge-form" class="dialog-form" novalidate>
+      <h2>Объединить позиции</h2>
+      <p id="merge-summary" class="muted"></p>
+      <label>Название новой позиции
+        <input id="m-title" maxlength="500" autocomplete="off" required>
+      </label>
+      <p id="merge-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" id="merge-cancel">Отмена</button>
+        <button type="submit" class="primary">Объединить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="invoices.js"></script>
+</body>
+</html>

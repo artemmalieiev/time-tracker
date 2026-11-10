@@ -1,6 +1,7 @@
 import { isSameDay, startOfMonth, subDays, subHours, subMinutes } from 'date-fns';
 import * as autobackup from './lib/autobackup';
 import { byId, el } from './lib/dom';
+import { createInvoice } from './lib/invoices';
 import type { Entry, Segment, Status } from './lib/storage';
 import {
   addEntry,
@@ -32,9 +33,10 @@ import {
   parsePublicDuration,
   splitDuration
 } from './lib/time';
+import { toEnglish } from './lib/translate';
 import { getEmail } from './lib/user';
 
-// The journal page: entries for a period, totals, editing, CSV export and backups.
+// The journal page: entries for a period, totals, editing, CSV export, invoices and backups.
 
 const userLabel = byId('user', HTMLSpanElement);
 const autoBackupCheckbox = byId('auto-backup', HTMLInputElement);
@@ -50,6 +52,7 @@ const projectFilter = byId('project-filter', HTMLSelectElement);
 const addButton = byId('btn-add', HTMLButtonElement);
 const translateCheckbox = byId('translate', HTMLInputElement);
 const exportButton = byId('btn-export', HTMLButtonElement);
+const invoiceButton = byId('btn-invoice', HTMLButtonElement);
 const statusLine = byId('export-status', HTMLParagraphElement);
 const totalLabel = byId('total', HTMLDivElement);
 const rangeLabel = byId('range-label', HTMLDivElement);
@@ -574,139 +577,7 @@ function showEditError(error: unknown) {
   editError.textContent = error instanceof Error ? error.message : 'Не удалось сохранить';
 }
 
-// CSV export with translation to English
-
-// Translations stay around while the page is open, so a second export does not translate the
-// same project names again.
-const translationCache = new Map<string, string>();
-
-async function detectLanguage(detector: LanguageDetectorInstance, text: string) {
-  const results = await detector.detect(text);
-  const top = results.at(0);
-  if (!top) {
-    return null;
-  }
-
-  const language = top.detectedLanguage;
-  if (language === 'en') {
-    return null;
-  }
-  if (language === 'und') {
-    return null;
-  }
-
-  // Short Latin-only text such as "API fix" is often misdetected, so we only trust it when the
-  // detector is very sure.
-  const minimum = /^\p{ASCII}*$/u.test(text) ? 0.8 : 0.3;
-  if (top.confidence < minimum) {
-    return null;
-  }
-  return language;
-}
-
-async function translateGroupUnsafe(api: TranslatorStatic, language: string, texts: string[], translations: Map<string, string>) {
-  const availability = await api.availability({ sourceLanguage: language, targetLanguage: 'en' });
-  if (availability === 'unavailable') {
-    return false;
-  }
-
-  const translator = await api.create({
-    monitor(monitor) {
-      monitor.addEventListener('downloadprogress', function onDownloadProgress(event) {
-        setStatus(`Загрузка модели перевода ${language}→en: ${Math.round(event.loaded * 100)}%`);
-      });
-    },
-    sourceLanguage: language,
-    targetLanguage: 'en'
-  });
-
-  setStatus(`Перевод с ${language}…`);
-  for (const text of texts) {
-    const translated = await translator.translate(text);
-    translationCache.set(text, translated);
-    translations.set(text, translated);
-  }
-  translator.destroy();
-  return true;
-}
-
-/**
- * Translates every text in one language. Returns false when this language could not be
- * translated, so the texts stay as they are.
- */
-async function translateGroup(api: TranslatorStatic, language: string, texts: string[], translations: Map<string, string>) {
-  try {
-    const translated = await translateGroupUnsafe(api, language, texts, translations);
-    return translated;
-  } catch (error) {
-    // Chrome refuses to download a model without a fresh click. That one the person can fix, so
-    // we let it reach them instead of quietly skipping the language.
-    if (error instanceof DOMException && error.name === 'NotAllowedError') {
-      throw error;
-    }
-    console.warn('Translation failed', language, error);
-    return false;
-  }
-}
-
-/**
- * Translates texts to English with Chrome's on-device models. Returns null when this Chrome has
- * no translation support. Texts already in English, or in a language we could not tell, are left
- * out of the result.
- */
-async function translateToEnglish(texts: string[]) {
-  const detectorApi = window.LanguageDetector;
-  if (!detectorApi) {
-    return null;
-  }
-  const translatorApi = window.Translator;
-  if (!translatorApi) {
-    return null;
-  }
-
-  const translations = new Map<string, string>();
-  const failedLanguages: string[] = [];
-  const pending: string[] = [];
-  for (const text of new Set(texts)) {
-    if (!/\p{L}/u.test(text)) {
-      continue;
-    }
-    const cached = translationCache.get(text);
-    if (cached === undefined) {
-      pending.push(text);
-    } else {
-      translations.set(text, cached);
-    }
-  }
-  if (pending.length === 0) {
-    return { failedLanguages, translations };
-  }
-
-  setStatus('Определение языка…');
-  const detector = await detectorApi.create();
-  const byLanguage = new Map<string, string[]>();
-  for (const text of pending) {
-    const language = await detectLanguage(detector, text);
-    if (language === null) {
-      continue;
-    }
-    const group = byLanguage.get(language);
-    if (group) {
-      group.push(text);
-    } else {
-      byLanguage.set(language, [text]);
-    }
-  }
-  detector.destroy();
-
-  for (const group of byLanguage.entries()) {
-    const translated = await translateGroup(translatorApi, group[0], group[1], translations);
-    if (!translated) {
-      failedLanguages.push(group[0]);
-    }
-  }
-  return { failedLanguages, translations };
-}
+// CSV export
 
 function escapeCell(value: string) {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
@@ -742,6 +613,25 @@ function csvRow(entry: Entry, range: Range, translations: Map<string, string>, n
   ];
 }
 
+/**
+ * Translates the texts when «На английском» is on. Returns the translations and a note for the
+ * status line about anything left untranslated.
+ */
+async function translateIfAsked(texts: string[]) {
+  const translations = new Map<string, string>();
+  if (!translateCheckbox.checked) {
+    return { note: '', translations };
+  }
+  const result = await toEnglish(texts, setStatus);
+  if (result === null) {
+    return { note: ' Перевод недоступен в этой версии Chrome (нужен Chrome 138+ на компьютере) — текст оставлен как есть.', translations };
+  }
+  if (result.failedLanguages.length > 0) {
+    return { note: ` Не удалось перевести с языков: ${result.failedLanguages.join(', ')} — эти тексты оставлены как есть.`, translations: result.translations };
+  }
+  return { note: '', translations: result.translations };
+}
+
 async function exportCsv() {
   const range = currentRange;
   if (!range) {
@@ -753,30 +643,18 @@ async function exportCsv() {
     return;
   }
 
-  let translations = new Map<string, string>();
-  let note = '';
-  if (translateCheckbox.checked) {
-    const texts: string[] = [];
-    for (const entry of rows) {
-      texts.push(entry.title, entry.description, entry.project);
-    }
-    const result = await translateToEnglish(texts);
-    if (result === null) {
-      note = ' Перевод недоступен в этой версии Chrome (нужен Chrome 138+ на компьютере) — текст выгружен как есть.';
-    } else {
-      translations = result.translations;
-      if (result.failedLanguages.length > 0) {
-        note = ` Не удалось перевести с языков: ${result.failedLanguages.join(', ')} — эти тексты оставлены как есть.`;
-      }
-    }
+  const texts: string[] = [];
+  for (const entry of rows) {
+    texts.push(entry.title, entry.description, entry.project);
   }
+  const translated = await translateIfAsked(texts);
 
   const now = Date.now();
   const exported = [...rows].sort((a, b) => firstStart(a, range) - firstStart(b, range));
   const lines = [['Date', 'Project', 'Title', 'Description', 'Status', 'Duration']];
   let total = 0;
   for (const entry of exported) {
-    lines.push(csvRow(entry, range, translations, now));
+    lines.push(csvRow(entry, range, translated.translations, now));
     total += reportDuration(entry, range, now);
   }
   lines.push(['Total', '', '', '', '', formatDurationEnglish(total)]);
@@ -786,7 +664,7 @@ async function exportCsv() {
     buildCsv(lines),
     'text/csv;charset=utf-8'
   );
-  setStatus(`CSV скачан, записей: ${exported.length}.${note}`);
+  setStatus(`CSV скачан, записей: ${exported.length}.${translated.note}`);
 }
 
 async function runExport() {
@@ -801,10 +679,65 @@ async function runExport() {
 function showExportError(error: unknown) {
   console.warn(error);
   if (error instanceof DOMException && error.name === 'NotAllowedError') {
-    setStatus('Chrome не разрешил скачать модель перевода — нажмите «Экспорт CSV» ещё раз.');
+    setStatus('Chrome не разрешил скачать модель перевода — нажмите кнопку ещё раз.');
     return;
   }
-  setStatus(`Ошибка экспорта: ${error instanceof Error ? error.message : 'неизвестная ошибка'}`);
+  setStatus(`Ошибка: ${error instanceof Error ? error.message : 'неизвестная ошибка'}`);
+}
+
+// Invoices
+
+/**
+ * Makes an invoice from the tasks the journal shows now, one line per task with the time the CSV
+ * would report, and opens it. The tasks themselves stay as they are.
+ */
+async function makeInvoice() {
+  const range = currentRange;
+  if (!range) {
+    setStatus('Выберите корректный диапазон дат.');
+    return;
+  }
+  if (rows.length === 0) {
+    setStatus('Нет записей для инвойса за выбранный период.');
+    return;
+  }
+
+  const texts: string[] = [];
+  for (const entry of rows) {
+    texts.push(entry.title);
+  }
+  const translated = await translateIfAsked(texts);
+
+  const now = Date.now();
+  const billed = [...rows].sort((a, b) => firstStart(a, range) - firstStart(b, range));
+  const tasks: Parameters<typeof createInvoice>[0] = [];
+  for (const entry of billed) {
+    tasks.push({
+      duration: reportDuration(entry, range, now),
+      entry_id: entry.id,
+      title: translated.translations.get(entry.title) ?? entry.title
+    });
+  }
+  const period = { from: formatDate(range.start), to: formatDate(subDays(range.end, 1)) };
+  const invoice = await createInvoice(tasks, period, new Date());
+
+  let note = translated.note;
+  for (const entry of billed) {
+    if (entry.status === 'running') {
+      note += ` Задача «${entry.title}» ещё идёт — в инвойс попало время на сейчас.`;
+    }
+  }
+  setStatus(`Инвойс № ${invoice.number} создан.${note}`);
+  await chrome.tabs.create({ url: chrome.runtime.getURL(`invoices.html#edit=${invoice.id}`) });
+}
+
+async function runMakeInvoice() {
+  invoiceButton.disabled = true;
+  try {
+    await makeInvoice();
+  } finally {
+    invoiceButton.disabled = false;
+  }
 }
 
 // Backups
@@ -949,6 +882,10 @@ editForm.addEventListener('submit', function onEditSubmit(event) {
 
 exportButton.addEventListener('click', function onExportClick() {
   runExport().catch(showExportError);
+});
+
+invoiceButton.addEventListener('click', function onInvoiceClick() {
+  runMakeInvoice().catch(showExportError);
 });
 
 backupButton.addEventListener('click', function onBackupClick() {

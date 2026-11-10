@@ -1,6 +1,6 @@
 # Time Tracker
 
-A personal Chrome extension (Manifest V3) for tracking time on tasks. The UI is in Russian, and the CSV export is in English. Repo: https://github.com/artemmalieiev/time-tracker (branch `main`).
+A personal Chrome extension (Manifest V3) for tracking time on tasks. The UI is in Russian. The CSV export and printed invoices are in English. Repo: https://github.com/artemmalieiev/time-tracker (branch `main`).
 
 ## Working agreements
 
@@ -27,7 +27,7 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
 
 ## Layout
 
-- `src/manifest.json`: permissions `storage`, `unlimitedStorage`, `identity`, `identity.email`, `alarms`, `downloads`. Minimum Chrome 116.
+- `src/manifest.json`: permissions `storage`, `unlimitedStorage`, `identity`, `identity.email`, `alarms`, `downloads`. Minimum Chrome 116. `chrome.tabs.create` needs no extra permission.
 - `src/background.ts`: the service worker.
   - Toolbar badge while a task runs: a white `●` on red `#d92b21`, like a record button.
   - Badge while tasks are paused: `❚❚` on gray `#6b7280`.
@@ -43,8 +43,23 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
   - A summary total and project bars, both showing tracked time.
   - A table with the columns Дата, Проект, Задача, Статус, Начало, Конец, Время, Публичное, plus a «Итого» footer row.
   - An edit dialog, manual entries, delete, backup and restore controls and the CSV export.
+  - «Инвойс» makes an invoice from the rows shown now and opens it in a new tab.
+    - one line per task, sorted by start;
+    - titles are translated when «На английском» is on;
+    - a running task goes in with its time up to now, and the status line says so.
+  - A header link «Инвойсы» opens the invoices page.
+- `src/invoices.*`: the invoices page.
+  - `#list` shows invoices, clients and payees, with dialogs to add and edit them. «Пустой инвойс» starts an invoice with no lines.
+  - `#edit=<id>` shows the editor beside a live copy of the paper.
+    - Header fields: client, payee, number, currency, date, due date, hourly rate and tax %.
+    - Lines: tick for merging, title, kind («Почасовая» / «Фикс. цена»), hours and minutes or units, rate, amount and remove.
+    - «Объединить» asks for a new title. «Разъединить» shows under a merged line.
+    - Every change saves at once. The editor never redraws from `storage.onChanged`, so the cursor stays put; only the list does.
+  - Printing shows only the paper, with `@page { margin: 0 }` so Chrome adds no URL header. «Скачать PDF» sets the page title to `Invoice <number>` and calls `window.print()`, so the person picks «Save as PDF».
 - `src/lib/storage.ts`: data model, every mutation (`mutate` with a write queue), backup and restore, `entryDuration` and `reportDuration`.
 - `src/lib/time.ts`: ranges, parsing and formatting with date-fns 4 and the `ru` locale.
+- `src/lib/invoices.ts`: payees, clients and invoices, their mutations and the money math.
+- `src/lib/translate.ts`: `toEnglish()` with Chrome's Translator API, shared by the CSV and invoices.
 - `src/lib/autobackup.ts`: daily automatic backup.
 - `src/lib/user.ts`: `getEmail()` and `getKey()`. The key is the email from `chrome.identity.getProfileUserInfo`, or `'local'`.
 - `src/lib/dom.ts`: `el()` and `byId()` helpers.
@@ -65,6 +80,27 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 - Every read is filtered by the current user, and project names come only from that user's entries.
 - `upgrade()` migrates version 1 entries (camelCase: `createdAt`, `userEmail` and so on). It also sets a missing `public_duration` to `null`. The next write saves the new shape.
 - `auto_backup` holds the automatic backup metadata. The legacy key `autoBackup` is migrated.
+- `payees`, `clients` and `invoices` hold the invoice data, each record with `user_email`.
+
+### Invoices
+
+- A payee is the person who gets paid. It has a name and free-text `details` (IBAN, SWIFT, address).
+- A client has `details`, a default `payee_id`, a `currency`, an `hourly_rate` in cents and `due_days`.
+  - Currencies come from a fixed list: USD, EUR, GBP, UAH, PLN.
+  - Choosing a client in the editor fills in its payee, currency, rate and due date.
+- A payee chosen by some client cannot be deleted. Deleting a client keeps its copy in old invoices.
+- An invoice keeps copies of the payee and client (`{ name, details }`), so editing them later leaves sent invoices alone.
+- An invoice also has `number`, `date` and `due_date` (`yyyy-MM-dd`), `currency`, `hourly_rate`, `tax_percent` and the journal `period` it came from (or `null`).
+- Each `InvoiceItem` is `hourly` (`duration` in ms) or `fixed` (`quantity`). Its `rate` is in cents. On an hourly line `null` means the invoice rate; on a fixed line it is the unit price.
+- Money is whole cents everywhere. `parseMoney` accepts `25`, `25.5` and `25,50`, and `formatMoney` prints `$540.00`.
+- Lines from the journal use `reportDuration`, so public time takes priority.
+- Lines are copies. Merging or editing them never changes `entries`. `entry_ids` remembers the source tasks.
+- `mergeItems` joins two or more hourly lines; the rate carries over only when they all share it.
+- A merged line keeps the lines it was made from in `parts`, and `splitItem` puts them back as they were before the merge. Edits made to the merged line are dropped. Only merged lines have `parts`.
+- Hours print rounded to hundredths, and the amount uses the rounded hours.
+- The paper table has the columns Item, Quantity, Unit, Rate and Amount. Unit shows `h` for hourly lines and stays empty for fixed ones.
+- Numbers run per payee through `nextNumber`. A new invoice goes to the client of the last invoice.
+- The paper is in English and uses Helvetica, like the sample invoice. It stays white in dark mode.
 
 ### Public time
 
@@ -79,11 +115,11 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 
 ## Backups
 
-- `createBackup()` builds a JSON file `{ app: 'time-tracker', version: 2, exported_at, user, projects, entries }`.
+- `createBackup()` builds a JSON file `{ app: 'time-tracker', version: 3, exported_at, user, projects, entries, payees, clients, invoices }`.
 - `restoreBackup()`:
   - merges by `id`, and the newer `updated_at` wins;
   - reassigns entries to the current user and keeps only one task running;
-  - accepts version 1 and version 2 files.
+  - accepts version 1, 2 and 3 files. Payees, clients and invoices merge the same way.
 - Automatic backups:
   - the alarm fires hourly, and a file is written at most once a day and only when the data changed;
   - files go to `Downloads/time-tracker-backups/time-tracker-backup_yyyy-MM-dd_HH-mm.json`;
@@ -149,3 +185,6 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 Earlier sessions took headless Chrome screenshots of `dist/extension` with a mock `chrome` API served over `python3 -m http.server`. That harness lived in the session scratchpad and is not in the repo.
 - Rebuild it if needed. Headless Chrome defaults to dark mode, and `--blink-settings=preferredColorScheme=1` forces light mode.
 - Use a window at least 520px wide.
+- For the invoices page the mock also needs `chrome.runtime.getURL`, `chrome.tabs.create` and `chrome.storage.onChanged`, with `payees`, `clients` and `invoices` seeded. Use placeholder bank details, never real ones.
+- `--print-to-pdf=<file> --no-pdf-header-footer` checks the printed invoice.
+- To check clicks, add a script that drives the page and writes results to a `data-log` attribute, then read it with `--dump-dom --virtual-time-budget=5000`.
