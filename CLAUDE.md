@@ -51,6 +51,7 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
     - the «Итого» `colspan` shrinks with the hidden columns before Время, and the label hides when all of them are hidden;
     - the choice is saved in `settings` and applied in other open tabs through `storage.onChanged`.
   - An edit dialog, manual entries, delete, backup and restore controls and the CSV export.
+    - Above «К оплате» the dialog shows «Фактическое время», the sum of the segments as they stand in the dialog. It recounts on every segment edit, add or removal, and an empty end counts until now. The «К оплате» fields use it as their placeholder.
   - «Инвойс» makes an invoice from the rows shown now and opens it in a new tab.
     - one line per task, sorted by start;
     - titles are translated when «На английском» is on;
@@ -119,7 +120,7 @@ Everything lives in `chrome.storage.local` with snake_case keys.
   - with no public time, it returns tracked time;
   - for a task spanning several days, it splits public time in proportion to the tracked time inside the range;
   - for a zero-length task, all of it goes to the day the task started.
-- The «К оплате» column shows the value, dimmed when it is not set.
+- The «К оплате» column shows the value, dimmed when it is not set, and red (`--danger`) when it is set below the tracked time. The comparison is in whole minutes, as both cells print them.
 - The summary total and the project bars stay on tracked time.
 - `parsePublicDuration(hours, minutes)` in `time.ts` is shared by the popup and the edit dialog. Both fields empty gives `null`. It rejects non-digits and minutes above 59.
 

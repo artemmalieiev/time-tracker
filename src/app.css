@@ -81,6 +81,7 @@ th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-botto
 thead th { padding-top: 12px; color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
 tbody tr:hover { background: color-mix(in srgb, var(--dial) 55%, var(--face)); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.under { color: var(--danger); }
 td.nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
 td.project { white-space: nowrap; }
 td.task { min-width: 220px; width: 40%; }
@@ -110,8 +111,12 @@ dialog::backdrop { background: rgb(19 23 28 / .45); }
 #edit-form { display: flex; flex-direction: column; gap: 12px; }
 #edit-form h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
 #edit-form > label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
+.tracked-time { display: flex; flex-direction: column; gap: 6px; }
+.tracked-label { font-size: 13px; font-weight: 500; }
+.tracked-value { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .segments-head { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 .hint { margin: -6px 0 0; font-size: 13px; }
+.public-time .hint { margin-top: 6px; }
 #segments { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
 .segment { display: flex; align-items: center; gap: 6px; }
 .segment input { flex: 1; min-width: 0; }

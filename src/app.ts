@@ -73,6 +73,7 @@ const editHeading = byId('edit-heading', HTMLHeadingElement);
 const titleInput = byId('e-title', HTMLInputElement);
 const descriptionInput = byId('e-desc', HTMLTextAreaElement);
 const projectInput = byId('e-project', HTMLInputElement);
+const trackedTime = byId('e-tracked', HTMLDivElement);
 const publicHoursInput = byId('e-public-hours', HTMLInputElement);
 const publicMinutesInput = byId('e-public-minutes', HTMLInputElement);
 const projectOptions = byId('projects', HTMLDataListElement);
@@ -298,13 +299,14 @@ function renderDurations() {
   const totals = new Map<string, number>();
   for (const entry of rows) {
     const reported = reportDuration(entry, currentRange, now);
+    const duration = entryDuration(entry, currentRange, now);
     publicTotal += reported;
     const publicCell = publicCells.get(entry.id);
     if (publicCell) {
       publicCell.textContent = formatDurationWords(reported);
+      markUnderbilled(publicCell, entry, reported, duration);
     }
 
-    const duration = entryDuration(entry, currentRange, now);
     total += duration;
     const name = entry.project || 'Без проекта';
     totals.set(name, (totals.get(name) ?? 0) + duration);
@@ -324,6 +326,24 @@ function renderDurations() {
   }
   const longest = sorted[0][1];
   projectTotals.replaceChildren(...sorted.map(item => renderRankedRow(item[0], item[1], longest, total)));
+}
+
+/**
+ * Turns the billable time red when it was set below the tracked time, so time given away for free
+ * stands out. We compare whole minutes, the way both cells print them, so a few seconds of
+ * difference never paint two equal-looking numbers red.
+ */
+function markUnderbilled(cell: HTMLTableCellElement, entry: Entry, reported: number, duration: number) {
+  let under = false;
+  if (entry.public_duration !== null) {
+    under = Math.floor(reported / 60000) < Math.floor(duration / 60000);
+  }
+  cell.classList.toggle('under', under);
+  if (under) {
+    cell.title = 'К оплате меньше фактического времени';
+  } else if (entry.public_duration !== null) {
+    cell.removeAttribute('title');
+  }
 }
 
 /**
@@ -523,6 +543,7 @@ function addSegmentRow(segment: Segment) {
   removeButton.addEventListener('click', function onRemoveSegmentClick() {
     row.remove();
     segmentRows = segmentRows.filter(other => other !== item);
+    renderTrackedTime();
   });
 
   segmentRows.push(item);
@@ -552,6 +573,7 @@ function openEditor(entry: Entry | null) {
     fillPublicFields(null);
     addSegmentRow({ end: now.getTime(), start: subHours(now, 1).getTime() });
   }
+  renderTrackedTime();
 
   editError.textContent = '';
   editDialog.showModal();
@@ -559,13 +581,38 @@ function openEditor(entry: Entry | null) {
 }
 
 /**
- * Fills the public time fields. Empty fields show the tracked time as a placeholder, so the person
- * sees what gets reported when they leave them empty.
+ * Shows the time the segments in the dialog add up to, as they stand now. A segment with an empty
+ * end runs until now, and one that cannot be read yet counts as nothing. The billable fields show
+ * the same time as their placeholder, so the person sees what gets reported when they leave them
+ * empty.
+ */
+function renderTrackedTime() {
+  const now = Date.now();
+  let total = 0;
+  for (const item of segmentRows) {
+    const start = readTime(item.start);
+    if (start === null) {
+      continue;
+    }
+    const end = item.end.value === '' ? now : readTime(item.end);
+    if (end === null) {
+      continue;
+    }
+    if (end > start) {
+      total += end - start;
+    }
+  }
+
+  trackedTime.textContent = formatDurationWords(total);
+  const parts = splitDuration(total);
+  publicHoursInput.placeholder = parts.hours.toString();
+  publicMinutesInput.placeholder = parts.minutes.toString();
+}
+
+/**
+ * Fills the billable time fields with the time set for the entry, or leaves them empty.
  */
 function fillPublicFields(entry: Entry | null) {
-  const tracked = splitDuration(entry ? entryDuration(entry, null, Date.now()) : 0);
-  publicHoursInput.placeholder = tracked.hours.toString();
-  publicMinutesInput.placeholder = tracked.minutes.toString();
   if (entry && entry.public_duration !== null) {
     const parts = splitDuration(entry.public_duration);
     publicHoursInput.value = parts.hours.toString();
@@ -1084,6 +1131,11 @@ rowsBody.addEventListener('click', function onRowsClick(event) {
 addSegmentButton.addEventListener('click', function onAddSegmentClick() {
   const now = new Date();
   addSegmentRow({ end: now.getTime(), start: subMinutes(now, 30).getTime() });
+  renderTrackedTime();
+});
+
+segmentsContainer.addEventListener('input', function onSegmentInput() {
+  renderTrackedTime();
 });
 
 editCancelButton.addEventListener('click', function onEditCancelClick() {
