@@ -34,7 +34,7 @@
     <div id="finish-tracked" class="muted"></div>
     <form id="finish-form" class="finish-form" novalidate>
       <fieldset class="public-time">
-        <legend>Публичное время</legend>
+        <legend>К оплате</legend>
         <div class="public-fields">
           <input type="number" id="finish-hours" min="0" step="1" inputmode="numeric" aria-label="Часы">
           <span class="muted">ч</span>
@@ -42,7 +42,7 @@
           <span class="muted">мин</span>
         </div>
       </fieldset>
-      <p class="muted hint">Попадёт в CSV вместо фактического. Оставьте пустым, чтобы выгружалось фактическое.</p>
+      <p class="muted hint">Попадёт в инвойс и CSV вместо фактического. Оставьте пустым, чтобы взять фактическое.</p>
       <p id="finish-error" class="error" role="alert"></p>
       <div class="row">
         <button type="submit" class="primary">Сохранить</button>

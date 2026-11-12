@@ -80,7 +80,7 @@
               <th data-col="start">Начало</th>
               <th data-col="end">Конец</th>
               <th class="num" data-col="duration">Время</th>
-              <th class="num" data-col="public" title="Время для отчёта. Если не задано, в отчёт идёт фактическое">Публичное</th>
+              <th class="num" data-col="public" title="Время для инвойса и CSV. Если не задано, берётся фактическое">К оплате</th>
               <th><span class="visually-hidden">Действия</span></th>
             </tr>
           </thead>
@@ -114,14 +114,14 @@
       <datalist id="projects"></datalist>
 
       <fieldset class="public-time">
-        <legend>Публичное время</legend>
+        <legend>К оплате</legend>
         <div class="public-fields">
           <input type="number" id="e-public-hours" min="0" step="1" inputmode="numeric" aria-label="Часы">
           <span class="muted">ч</span>
           <input type="number" id="e-public-minutes" min="0" max="59" step="1" inputmode="numeric" aria-label="Минуты">
           <span class="muted">мин</span>
         </div>
-        <p class="muted hint">Попадёт в CSV вместо фактического. Оставьте пустым, чтобы выгружалось фактическое.</p>
+        <p class="muted hint">Попадёт в инвойс и CSV вместо фактического. Оставьте пустым, чтобы взять фактическое.</p>
       </fieldset>
 
       <div class="segments-head">

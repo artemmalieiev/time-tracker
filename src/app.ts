@@ -271,7 +271,7 @@ function renderRow(entry: Entry, range: Range) {
   const publicCell = el('td', { className: 'num', dataset: { col: 'public' } }, []);
   if (entry.public_duration === null) {
     publicCell.classList.add('muted');
-    publicCell.title = 'Не задано, в отчёт пойдёт фактическое время';
+    publicCell.title = 'Не задано, в инвойс и CSV пойдёт фактическое время';
   }
   publicCells.set(entry.id, publicCell);
 

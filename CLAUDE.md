@@ -45,7 +45,7 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
     - second line: the project filter and «Колонки»;
     - the right-hand group wraps as one block and stays at the right edge.
   - A summary total and project bars, both showing tracked time.
-  - A table with the columns Дата, Проект, Задача, Статус, Начало, Конец, Время, Публичное, plus a «Итого» footer row.
+  - A table with the columns Дата, Проект, Задача, Статус, Начало, Конец, Время, К оплате, plus a «Итого» footer row.
   - «Колонки» opens a popover with a checkbox per column. Every column but the actions can be hidden.
     - cells carry `data-col`, and CSS hides them by the table's `data-hidden`, so rows are not redrawn;
     - the «Итого» `colspan` shrinks with the hidden columns before Время, and the label hides when all of them are hidden;
@@ -114,12 +114,12 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 
 ### Public time
 
-- Public time is optional, per task. The CSV `Duration` column reports it instead of tracked time.
+- Public time is optional, per task. The UI calls it «К оплате» (column, edit dialog and popup finish panel). The CSV `Duration` column and invoices report it instead of tracked time.
 - `reportDuration(entry, range, now)`:
   - with no public time, it returns tracked time;
   - for a task spanning several days, it splits public time in proportion to the tracked time inside the range;
   - for a zero-length task, all of it goes to the day the task started.
-- The «Публичное» column shows the value, dimmed when it is not set.
+- The «К оплате» column shows the value, dimmed when it is not set.
 - The summary total and the project bars stay on tracked time.
 - `parsePublicDuration(hours, minutes)` in `time.ts` is shared by the popup and the edit dialog. Both fields empty gives `null`. It rejects non-digits and minutes above 59.
 
@@ -149,7 +149,7 @@ Everything lives in `chrome.storage.local` with snake_case keys.
   - Дата → `Date`, Проект → `Project`, Задача → `Title, Description`, Статус → `Status`;
   - Начало → `Start` and Конец → `End`, formatted like the journal, with `in progress` for a running task;
   - Время → `Tracked`, from `entryDuration`;
-  - Публичное → `Duration`, from `reportDuration`, so public time takes priority.
+  - К оплате → `Duration`, from `reportDuration`, so public time takes priority.
 - A final row has `Total` in the first cell and the sums under `Tracked` and `Duration`. When the first column is a time column, its sum keeps the cell.
 - With every column hidden, the export stops and says so.
 - Only texts that go into the file are translated.
