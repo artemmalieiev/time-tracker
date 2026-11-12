@@ -2,6 +2,7 @@ import { isSameDay, startOfMonth, subDays, subHours, subMinutes } from 'date-fns
 import * as autobackup from './lib/autobackup';
 import { byId, el } from './lib/dom';
 import { createInvoice } from './lib/invoices';
+import { getSettings, setHiddenColumns } from './lib/settings';
 import type { Entry, Segment, Status } from './lib/storage';
 import {
   addEntry,
@@ -49,6 +50,8 @@ const customRange = byId('custom-range', HTMLDivElement);
 const fromInput = byId('from', HTMLInputElement);
 const toInput = byId('to', HTMLInputElement);
 const projectFilter = byId('project-filter', HTMLSelectElement);
+const columnsButton = byId('btn-columns', HTMLButtonElement);
+const columnsMenu = byId('columns-menu', HTMLDivElement);
 const addButton = byId('btn-add', HTMLButtonElement);
 const translateCheckbox = byId('translate', HTMLInputElement);
 const exportButton = byId('btn-export', HTMLButtonElement);
@@ -57,8 +60,10 @@ const statusLine = byId('export-status', HTMLParagraphElement);
 const totalLabel = byId('total', HTMLDivElement);
 const rangeLabel = byId('range-label', HTMLDivElement);
 const projectTotals = byId('by-project', HTMLDivElement);
+const journalTable = byId('journal', HTMLTableElement);
 const rowsBody = byId('rows', HTMLTableSectionElement);
 const totalsRow = byId('totals-row', HTMLTableSectionElement);
+const totalLabelCell = byId('total-label', HTMLTableCellElement);
 const totalDurationCell = byId('total-duration', HTMLTableCellElement);
 const totalPublicCell = byId('total-public', HTMLTableCellElement);
 const emptyMessage = byId('empty', HTMLParagraphElement);
@@ -136,6 +141,7 @@ function saveFilters() {
 const filters = loadFilters();
 let currentRange: Range | null = null;
 let rows: Entry[] = [];
+let hiddenColumns: string[] = [];
 const durationCells = new Map<string, HTMLTableCellElement>();
 const publicCells = new Map<string, HTMLTableCellElement>();
 
@@ -231,21 +237,38 @@ function renderTask(entry: Entry) {
   return parts;
 }
 
-function renderRow(entry: Entry, range: Range) {
+/**
+ * When the task starts and ends inside the range. The end is null while the task runs.
+ */
+function rowSpan(entry: Entry, range: Range) {
   const segments = segmentsInRange(entry, range);
-  const start = new Date(segments[0].start);
   const lastEnd = segments[segments.length - 1].end;
-  let end = 'идёт';
-  if (lastEnd !== null) {
-    const endDate = new Date(lastEnd);
-    end = isSameDay(start, endDate) ? formatTime(endDate) : formatDateTime(endDate);
-  }
+  return {
+    end: lastEnd === null ? null : new Date(lastEnd),
+    start: new Date(segments[0].start)
+  };
+}
 
-  const durationCell = el('td', { className: 'num dur' }, []);
+/**
+ * The end as the journal prints it: the time alone on the start day, the date too on a later one.
+ */
+function formatEnd(start: Date, end: Date | null, running: string) {
+  if (end === null) {
+    return running;
+  }
+  return isSameDay(start, end) ? formatTime(end) : formatDateTime(end);
+}
+
+function renderRow(entry: Entry, range: Range) {
+  const span = rowSpan(entry, range);
+  const start = span.start;
+  const end = formatEnd(start, span.end, 'идёт');
+
+  const durationCell = el('td', { className: 'num dur', dataset: { col: 'duration' } }, []);
   durationCells.set(entry.id, durationCell);
 
   // Without public time the tracked time goes to the report, so we show it dimmed to say so.
-  const publicCell = el('td', { className: 'num' }, []);
+  const publicCell = el('td', { className: 'num', dataset: { col: 'public' } }, []);
   if (entry.public_duration === null) {
     publicCell.classList.add('muted');
     publicCell.title = 'Не задано, в отчёт пойдёт фактическое время';
@@ -253,12 +276,12 @@ function renderRow(entry: Entry, range: Range) {
   publicCells.set(entry.id, publicCell);
 
   return el('tr', { dataset: { id: entry.id } }, [
-    el('td', { className: 'nowrap', text: formatDate(start) }, []),
-    el('td', { className: 'project', text: entry.project || '—' }, []),
-    el('td', { className: 'task' }, renderTask(entry)),
-    el('td', {}, [el('span', { className: `status ${entry.status}`, text: statusLabel(entry.status) }, [])]),
-    el('td', { className: 'nowrap', text: formatTime(start) }, []),
-    el('td', { className: 'nowrap', text: end }, []),
+    el('td', { className: 'nowrap', dataset: { col: 'date' }, text: formatDate(start) }, []),
+    el('td', { className: 'project', dataset: { col: 'project' }, text: entry.project || '—' }, []),
+    el('td', { className: 'task', dataset: { col: 'task' } }, renderTask(entry)),
+    el('td', { dataset: { col: 'status' } }, [el('span', { className: `status ${entry.status}`, text: statusLabel(entry.status) }, [])]),
+    el('td', { className: 'nowrap', dataset: { col: 'start' }, text: formatTime(start) }, []),
+    el('td', { className: 'nowrap', dataset: { col: 'end' }, text: end }, []),
     durationCell,
     publicCell,
     el('td', { className: 'actions' }, renderActions(entry))
@@ -351,6 +374,75 @@ async function render() {
   emptyMessage.hidden = rows.length > 0;
   totalsRow.hidden = rows.length === 0;
   renderDurations();
+}
+
+/**
+ * Columns a person may hide, taken from the table header. The row actions have no data-col and
+ * always stay, so every row can still be edited.
+ */
+function hideableColumns() {
+  const columns: { key: string; label: string; }[] = [];
+  for (const header of journalTable.querySelectorAll<HTMLTableCellElement>('thead th')) {
+    const key = header.dataset.col;
+    if (key === undefined) {
+      continue;
+    }
+    columns.push({ key, label: header.textContent ?? key });
+  }
+  return columns;
+}
+
+function renderColumnsMenu() {
+  const items: HTMLLabelElement[] = [];
+  for (const column of hideableColumns()) {
+    const checkbox = el('input', { type: 'checkbox', value: column.key }, []);
+    items.push(el('label', { className: 'check' }, [checkbox, column.label]));
+  }
+  columnsMenu.replaceChildren(...items);
+}
+
+/**
+ * Shows and hides the table columns. The stylesheet does the hiding, so the rows need no redraw.
+ */
+function applyColumns(hidden: string[]) {
+  hiddenColumns = hidden;
+  journalTable.dataset.hidden = hidden.join(' ');
+  for (const checkbox of columnsMenu.querySelectorAll('input')) {
+    checkbox.checked = !hidden.includes(checkbox.value);
+  }
+
+  // «Итого» spans every column before the durations, so it has to shrink when some of them hide.
+  let span = 0;
+  for (const header of journalTable.querySelectorAll<HTMLTableCellElement>('thead th')) {
+    const key = header.dataset.col;
+    if (key === 'duration') {
+      break;
+    }
+    if (key === undefined || !hidden.includes(key)) {
+      span++;
+    }
+  }
+  // With every one of them hidden there is no room left for the label, so it hides too.
+  totalLabelCell.hidden = span === 0;
+  totalLabelCell.colSpan = Math.max(span, 1);
+}
+
+async function renderColumns() {
+  const settings = await getSettings();
+  applyColumns(settings.hidden_columns);
+}
+
+function saveColumns() {
+  const hidden: string[] = [];
+  const known: string[] = [];
+  for (const checkbox of columnsMenu.querySelectorAll('input')) {
+    known.push(checkbox.value);
+    if (!checkbox.checked) {
+      hidden.push(checkbox.value);
+    }
+  }
+  applyColumns(hidden);
+  return setHiddenColumns(hidden, known);
 }
 
 function syncPeriodControls() {
@@ -602,15 +694,111 @@ function downloadFile(filename: string, content: string, type: string) {
   }, 1000);
 }
 
-function csvRow(entry: Entry, range: Range, translations: Map<string, string>, now: number) {
-  return [
-    formatDate(new Date(firstStart(entry, range))),
-    translations.get(entry.project) ?? entry.project,
-    translations.get(entry.title) ?? entry.title,
-    translations.get(entry.description) ?? entry.description,
-    statusLabelEnglish(entry.status),
-    formatDurationEnglish(reportDuration(entry, range, now))
-  ];
+/**
+ * Keys of the columns shown in the journal now, in table order. The CSV takes the same ones.
+ */
+function shownColumns() {
+  const columns: string[] = [];
+  for (const column of hideableColumns()) {
+    if (!hiddenColumns.includes(column.key)) {
+      columns.push(column.key);
+    }
+  }
+  return columns;
+}
+
+function csvHeader(columns: string[]) {
+  const header: string[] = [];
+  for (const column of columns) {
+    switch (column) {
+      case 'date':
+        header.push('Date');
+        break;
+      case 'project':
+        header.push('Project');
+        break;
+      case 'task':
+        header.push('Title', 'Description');
+        break;
+      case 'status':
+        header.push('Status');
+        break;
+      case 'start':
+        header.push('Start');
+        break;
+      case 'end':
+        header.push('End');
+        break;
+      case 'duration':
+        header.push('Tracked');
+        break;
+      case 'public':
+        header.push('Duration');
+        break;
+      default:
+        throw new Error('Unknown journal column', { cause: column });
+    }
+  }
+  return header;
+}
+
+function csvRow(entry: Entry, range: Range, columns: string[], translations: Map<string, string>, now: number) {
+  const span = rowSpan(entry, range);
+  const row: string[] = [];
+  for (const column of columns) {
+    switch (column) {
+      case 'date':
+        row.push(formatDate(span.start));
+        break;
+      case 'project':
+        row.push(translations.get(entry.project) ?? entry.project);
+        break;
+      case 'task':
+        row.push(translations.get(entry.title) ?? entry.title, translations.get(entry.description) ?? entry.description);
+        break;
+      case 'status':
+        row.push(statusLabelEnglish(entry.status));
+        break;
+      case 'start':
+        row.push(formatTime(span.start));
+        break;
+      case 'end':
+        row.push(formatEnd(span.start, span.end, 'in progress'));
+        break;
+      case 'duration':
+        row.push(formatDurationEnglish(entryDuration(entry, range, now)));
+        break;
+      case 'public':
+        row.push(formatDurationEnglish(reportDuration(entry, range, now)));
+        break;
+      default:
+        throw new Error('Unknown journal column', { cause: column });
+    }
+  }
+  return row;
+}
+
+/**
+ * The last line: the word Total in the first cell and the sums under the time columns.
+ */
+function csvTotal(columns: string[], tracked: number, reported: number) {
+  const row: string[] = [];
+  for (const column of columns) {
+    if (column === 'duration') {
+      row.push(formatDurationEnglish(tracked));
+    } else if (column === 'public') {
+      row.push(formatDurationEnglish(reported));
+    } else if (column === 'task') {
+      row.push('', '');
+    } else {
+      row.push('');
+    }
+  }
+  // When the table starts with a time column, its sum keeps the first cell.
+  if (row[0] === '') {
+    row[0] = 'Total';
+  }
+  return row;
 }
 
 /**
@@ -642,22 +830,35 @@ async function exportCsv() {
     setStatus('Нет записей для экспорта за выбранный период.');
     return;
   }
+  const columns = shownColumns();
+  if (columns.length === 0) {
+    setStatus('Все колонки скрыты — включите хоть одну в «Колонках».');
+    return;
+  }
 
+  // Only the texts that go into the file need translating.
   const texts: string[] = [];
   for (const entry of rows) {
-    texts.push(entry.title, entry.description, entry.project);
+    if (columns.includes('task')) {
+      texts.push(entry.title, entry.description);
+    }
+    if (columns.includes('project')) {
+      texts.push(entry.project);
+    }
   }
   const translated = await translateIfAsked(texts);
 
   const now = Date.now();
   const exported = [...rows].sort((a, b) => firstStart(a, range) - firstStart(b, range));
-  const lines = [['Date', 'Project', 'Title', 'Description', 'Status', 'Duration']];
-  let total = 0;
+  const lines = [csvHeader(columns)];
+  let tracked = 0;
+  let reported = 0;
   for (const entry of exported) {
-    lines.push(csvRow(entry, range, translated.translations, now));
-    total += reportDuration(entry, range, now);
+    lines.push(csvRow(entry, range, columns, translated.translations, now));
+    tracked += entryDuration(entry, range, now);
+    reported += reportDuration(entry, range, now);
   }
-  lines.push(['Total', '', '', '', '', formatDurationEnglish(total)]);
+  lines.push(csvTotal(columns, tracked, reported));
 
   downloadFile(
     `time-tracker_${formatDate(range.start)}_${formatDate(subDays(range.end, 1))}.csv`,
@@ -850,6 +1051,20 @@ projectFilter.addEventListener('change', function onProjectFilterChange() {
   render().catch(console.warn);
 });
 
+columnsMenu.addEventListener('change', function onColumnsChange() {
+  saveColumns().catch(console.warn);
+});
+
+// The menu sits in the top layer, away from its button, so we place it under the button each time
+// it opens, lined up with the button's left edge.
+columnsMenu.addEventListener('beforetoggle', function onColumnsMenuToggle(event) {
+  if (event.newState === 'open') {
+    const rect = columnsButton.getBoundingClientRect();
+    columnsMenu.style.top = `${rect.bottom + 4}px`;
+    columnsMenu.style.left = `${rect.left}px`;
+  }
+});
+
 addButton.addEventListener('click', function onAddClick() {
   openEditor(null);
 });
@@ -924,6 +1139,9 @@ chrome.storage.onChanged.addListener(function onStorageChanged(changes, area) {
   if ('auto_backup' in changes) {
     renderAutoBackup().catch(console.warn);
   }
+  if ('settings' in changes) {
+    renderColumns().catch(console.warn);
+  }
 });
 
 setInterval(function refreshRunningDurations() {
@@ -934,6 +1152,8 @@ setInterval(function refreshRunningDurations() {
 
 async function init() {
   syncPeriodControls();
+  renderColumnsMenu();
+  await renderColumns();
   await render();
   if (location.hash === '#new') {
     history.replaceState(null, '', location.pathname);

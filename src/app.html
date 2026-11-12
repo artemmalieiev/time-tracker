@@ -29,6 +29,7 @@
     <section class="toolbar">
       <div id="periods" class="periods" role="radiogroup" aria-label="Период">
         <label><input type="radio" name="period" value="today"> Сегодня</label>
+        <label><input type="radio" name="period" value="yesterday"> Вчера</label>
         <label><input type="radio" name="period" value="week"> Неделя</label>
         <label><input type="radio" name="period" value="month"> Месяц</label>
         <label><input type="radio" name="period" value="lastMonth"> Прошлый месяц</label>
@@ -39,13 +40,18 @@
         <span class="muted">–</span>
         <input type="date" id="to" aria-label="По дату">
       </div>
-      <select id="project-filter" aria-label="Проект"></select>
-      <div class="spacer"></div>
-      <button id="btn-add">Добавить запись</button>
-      <div class="export">
-        <label class="check"><input type="checkbox" id="translate" checked> На английском</label>
-        <button id="btn-export" class="primary">Скачать CSV</button>
-        <button id="btn-invoice" title="Инвойс из задач, которые сейчас показаны в журнале">Инвойс</button>
+      <div class="toolbar-actions">
+        <div class="export">
+          <label class="check"><input type="checkbox" id="translate" checked> На английском</label>
+          <button id="btn-export">Скачать CSV</button>
+          <button id="btn-invoice" title="Инвойс из задач, которые сейчас показаны в журнале">Инвойс</button>
+        </div>
+        <button id="btn-add" class="primary">Добавить запись</button>
+      </div>
+      <div class="toolbar-row">
+        <select id="project-filter" aria-label="Проект"></select>
+        <button id="btn-columns" popovertarget="columns-menu" aria-haspopup="true">Колонки</button>
+        <div id="columns-menu" class="columns-menu" popover aria-label="Колонки журнала"></div>
       </div>
     </section>
 
@@ -64,26 +70,26 @@
 
     <div class="sheet">
       <div class="table-wrap">
-        <table>
+        <table id="journal">
           <thead>
             <tr>
-              <th>Дата</th>
-              <th>Проект</th>
-              <th>Задача</th>
-              <th>Статус</th>
-              <th>Начало</th>
-              <th>Конец</th>
-              <th class="num">Время</th>
-              <th class="num" title="Время для отчёта. Если не задано, в отчёт идёт фактическое">Публичное</th>
+              <th data-col="date">Дата</th>
+              <th data-col="project">Проект</th>
+              <th data-col="task">Задача</th>
+              <th data-col="status">Статус</th>
+              <th data-col="start">Начало</th>
+              <th data-col="end">Конец</th>
+              <th class="num" data-col="duration">Время</th>
+              <th class="num" data-col="public" title="Время для отчёта. Если не задано, в отчёт идёт фактическое">Публичное</th>
               <th><span class="visually-hidden">Действия</span></th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
           <tfoot id="totals-row">
             <tr>
-              <th colspan="6" scope="row">Итого</th>
-              <td id="total-duration" class="num"></td>
-              <td id="total-public" class="num"></td>
+              <th id="total-label" colspan="6" scope="row">Итого</th>
+              <td id="total-duration" class="num" data-col="duration"></td>
+              <td id="total-public" class="num" data-col="public"></td>
               <td></td>
             </tr>
           </tfoot>

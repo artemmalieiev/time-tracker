@@ -191,7 +191,7 @@ async function testBackup() {
   await saveClient(null, { currency: 'USD', details: '', due_days: 7, hourly_rate: 100, name: 'Client', payee_id: payee.id });
   await createInvoice([{ duration: hour, entry_id: 'x', title: 'Line' }], null, new Date());
   const created = await createBackup();
-  assert(created.version === 3, 'expected backup version 3');
+  assert(created.version === 4, 'expected backup version 4');
   const backup: unknown = JSON.parse(JSON.stringify(created));
 
   state.storage.clear();

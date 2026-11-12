@@ -1,4 +1,5 @@
 import { getBackupData, restore as restoreInvoices } from './invoices';
+import { getSettings, restore as restoreSettings } from './settings';
 import type { Range } from './time';
 import { getKey } from './user';
 
@@ -421,14 +422,15 @@ export function reportDuration(entry: Entry, range: Range | null, now: number) {
 }
 
 /**
- * A backup of the signed-in person's entries, projects, payees, clients and invoices, ready to be
- * saved as JSON.
+ * A backup of the signed-in person's entries, projects, payees, clients, invoices and settings,
+ * ready to be saved as JSON.
  */
 export async function createBackup() {
   const entries = await getEntries();
   const projects = await getProjects();
   const user = await getKey();
   const invoiceData = await getBackupData();
+  const settings = await getSettings();
   return {
     app: 'time-tracker',
     clients: invoiceData.clients,
@@ -437,14 +439,15 @@ export async function createBackup() {
     invoices: invoiceData.invoices,
     payees: invoiceData.payees,
     projects,
+    settings,
     user,
-    version: 3
+    version: 4
   };
 }
 
 /**
- * The outer shape of a backup file. Version 1 used camelCase keys inside the entries, and
- * versions before 3 have no payees, clients or invoices.
+ * The outer shape of a backup file. Version 1 used camelCase keys inside the entries, versions
+ * before 3 have no payees, clients or invoices, and versions before 4 have no settings.
  */
 interface BackupFile {
   app: 'time-tracker';
@@ -456,6 +459,8 @@ interface BackupFile {
   invoices?: unknown;
 
   payees?: unknown;
+
+  settings?: unknown;
 
   version: number;
 }
@@ -550,13 +555,13 @@ function hasValidSegments(entry: Entry) {
  * Entries are matched by id. A new one is added, and an existing one is replaced only when the
  * copy in the backup is newer. Entries missing from the backup stay. Everything restored belongs
  * to the person signed in now, so a backup can move entries to another account or computer.
- * Payees, clients and invoices merge the same way.
+ * Payees, clients, invoices and settings merge the same way.
  */
 export async function restoreBackup(backup: unknown) {
   if (!isBackupFile(backup)) {
     throw new Error('Это не файл резервной копии Time Tracker');
   }
-  if (backup.version > 3) {
+  if (backup.version > 4) {
     throw new Error('Копия сделана более новой версией расширения — сначала обновите расширение');
   }
 
@@ -569,6 +574,7 @@ export async function restoreBackup(backup: unknown) {
     return result;
   });
   await restoreInvoices(backup);
+  await restoreSettings(backup.settings);
   return counts;
 }
 

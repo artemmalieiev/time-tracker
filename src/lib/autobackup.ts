@@ -121,7 +121,7 @@ export async function run() {
   }
 
   // The export time changes on every call, so it stays out of the fingerprint.
-  const hash = fingerprint([backup.user, backup.entries, backup.projects, backup.payees, backup.clients, backup.invoices]);
+  const hash = fingerprint([backup.user, backup.entries, backup.projects, backup.payees, backup.clients, backup.invoices, backup.settings]);
   if (hash === meta.last_hash) {
     return 'unchanged';
   }

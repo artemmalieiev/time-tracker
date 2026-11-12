@@ -39,6 +39,7 @@ td.actions a { margin-right: 6px; font-size: 13px; }
 .item-note { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; }
 .item-note button { padding: 0 6px; font-size: 12px; }
 .item select, .item input { padding: 5px 7px; }
+.item select { padding-right: 28px; background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%; }
 .quantity { display: flex; align-items: center; gap: 4px; }
 .quantity input { width: 4.2em; text-align: right; font-variant-numeric: tabular-nums; appearance: textfield; }
 .quantity input::-webkit-inner-spin-button, .quantity input::-webkit-outer-spin-button { appearance: none; margin: 0; }

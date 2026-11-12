@@ -39,9 +39,13 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
   - «Завершить» finishes the task immediately, then shows a finish panel for public time («Сохранить» / «Пропустить»).
   - Chrome caps popup height at 600px, so keep the UI compact.
 - `src/app.*`: the journal page.
-  - Periods: day, week (Monday start), month, last month and a custom range. A project filter.
+  - Periods: today, yesterday, week (Monday start), month, last month and a custom range. A project filter.
   - A summary total and project bars, both showing tracked time.
   - A table with the columns Дата, Проект, Задача, Статус, Начало, Конец, Время, Публичное, plus a «Итого» footer row.
+  - «Колонки» opens a popover with a checkbox per column. Every column but the actions can be hidden.
+    - cells carry `data-col`, and CSS hides them by the table's `data-hidden`, so rows are not redrawn;
+    - the «Итого» `colspan` shrinks with the hidden columns before Время, and the label hides when all of them are hidden;
+    - the choice is saved in `settings` and applied in other open tabs through `storage.onChanged`.
   - An edit dialog, manual entries, delete, backup and restore controls and the CSV export.
   - «Инвойс» makes an invoice from the rows shown now and opens it in a new tab.
     - one line per task, sorted by start;
@@ -59,6 +63,7 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
 - `src/lib/storage.ts`: data model, every mutation (`mutate` with a write queue), backup and restore, `entryDuration` and `reportDuration`.
 - `src/lib/time.ts`: ranges, parsing and formatting with date-fns 4 and the `ru` locale.
 - `src/lib/invoices.ts`: payees, clients and invoices, their mutations and the money math.
+- `src/lib/settings.ts`: per-user preferences (`getSettings`, `setHiddenColumns`) and their restore from a backup.
 - `src/lib/translate.ts`: `toEnglish()` with Chrome's Translator API, shared by the CSV and invoices.
 - `src/lib/autobackup.ts`: daily automatic backup.
 - `src/lib/user.ts`: `getEmail()` and `getKey()`. The key is the email from `chrome.identity.getProfileUserInfo`, or `'local'`.
@@ -81,6 +86,7 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 - `upgrade()` migrates version 1 entries (camelCase: `createdAt`, `userEmail` and so on). It also sets a missing `public_duration` to `null`. The next write saves the new shape.
 - `auto_backup` holds the automatic backup metadata. The legacy key `autoBackup` is migrated.
 - `payees`, `clients` and `invoices` hold the invoice data, each record with `user_email`.
+- `settings` holds one `{ hidden_columns, updated_at, user_email }` record per user. It stores the hidden columns, so a new column shows by default.
 
 ### Invoices
 
@@ -104,7 +110,7 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 
 ### Public time
 
-- Public time is optional, per task. The CSV reports it instead of tracked time.
+- Public time is optional, per task. The CSV `Duration` column reports it instead of tracked time.
 - `reportDuration(entry, range, now)`:
   - with no public time, it returns tracked time;
   - for a task spanning several days, it splits public time in proportion to the tracked time inside the range;
@@ -115,11 +121,12 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 
 ## Backups
 
-- `createBackup()` builds a JSON file `{ app: 'time-tracker', version: 3, exported_at, user, projects, entries, payees, clients, invoices }`.
+- `createBackup()` builds a JSON file `{ app: 'time-tracker', version: 4, exported_at, user, projects, entries, payees, clients, invoices, settings }`.
 - `restoreBackup()`:
   - merges by `id`, and the newer `updated_at` wins;
   - reassigns entries to the current user and keeps only one task running;
-  - accepts version 1, 2 and 3 files. Payees, clients and invoices merge the same way.
+  - accepts version 1 to 4 files. Payees, clients and invoices merge the same way;
+  - settings from the file win only when their `updated_at` is newer than the stored ones.
 - Automatic backups:
   - the alarm fires hourly, and a file is written at most once a day and only when the data changed;
   - files go to `Downloads/time-tracker-backups/time-tracker-backup_yyyy-MM-dd_HH-mm.json`;
@@ -134,8 +141,14 @@ Everything lives in `chrome.storage.local` with snake_case keys.
 
 ## CSV export
 
-- Columns: `Date, Project, Title, Description, Status, Duration`, with a final `Total` row.
-- Duration comes from `reportDuration`, so public time takes priority.
+- The columns follow the ones shown in the journal, in table order:
+  - Дата → `Date`, Проект → `Project`, Задача → `Title, Description`, Статус → `Status`;
+  - Начало → `Start` and Конец → `End`, formatted like the journal, with `in progress` for a running task;
+  - Время → `Tracked`, from `entryDuration`;
+  - Публичное → `Duration`, from `reportDuration`, so public time takes priority.
+- A final row has `Total` in the first cell and the sums under `Tracked` and `Duration`. When the first column is a time column, its sum keeps the cell.
+- With every column hidden, the export stops and says so.
+- Only texts that go into the file are translated.
 - Optional translation into English uses Chrome's Translator API, with the source language detected by LanguageDetector.
 
 ## Design: "stopwatch dial"

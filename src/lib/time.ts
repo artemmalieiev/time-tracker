@@ -9,7 +9,7 @@ export interface Range {
   start: Date;
 }
 
-export type Period = 'custom' | 'lastMonth' | 'month' | 'today' | 'week';
+export type Period = 'custom' | 'lastMonth' | 'month' | 'today' | 'week' | 'yesterday';
 
 /**
  * Whether the value is one of the periods the journal can show.
@@ -19,7 +19,8 @@ export function isPeriod(value: any): value is Period {
     || value === 'lastMonth'
     || value === 'month'
     || value === 'today'
-    || value === 'week';
+    || value === 'week'
+    || value === 'yesterday';
 }
 
 /**
@@ -34,6 +35,8 @@ export function getRange(period: Period, from: string, to: string, now: Date) {
   switch (period) {
     case 'today':
       return { end: addDays(today, 1), start: today };
+    case 'yesterday':
+      return { end: today, start: subDays(today, 1) };
     case 'week': {
       const monday = startOfWeek(today, { weekStartsOn: 1 });
       return { end: addDays(monday, 7), start: monday };

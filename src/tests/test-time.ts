@@ -21,6 +21,13 @@ function testLastMonthInJanuary() {
   assert(formatDate(range.end) === '2026-01-01', 'expected last month to end where January starts');
 }
 
+function testYesterdayAcrossMonths() {
+  const range = getRange('yesterday', '', '', new Date(2026, 11, 1, 9));
+  assert(range !== null, 'expected a range');
+  assert(formatDate(range.start) === '2026-11-30', 'expected yesterday to be the last day of the previous month');
+  assert(formatDate(range.end) === '2026-12-01', 'expected yesterday to end where today starts');
+}
+
 function testCustomRange() {
   const range = getRange('custom', '2026-11-01', '2026-11-03', new Date());
   assert(range !== null, 'expected a range');
@@ -80,6 +87,7 @@ testRangeLabels();
 testPublicDurationParsing();
 testWeekOnSunday();
 testLastMonthInJanuary();
+testYesterdayAcrossMonths();
 testCustomRange();
 testStrictParsing();
 testDurations();
