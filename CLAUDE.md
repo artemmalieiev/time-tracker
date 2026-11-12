@@ -40,6 +40,10 @@ Install for manual testing: `chrome://extensions` → Developer mode → Load un
   - Chrome caps popup height at 600px, so keep the UI compact.
 - `src/app.*`: the journal page.
   - Periods: today, yesterday, week (Monday start), month, last month and a custom range. A project filter.
+  - The toolbar has two lines:
+    - first line: the periods and custom range on the left, and on the right «На английском», «Скачать CSV», «Инвойс» and «Добавить запись», which is the primary button;
+    - second line: the project filter and «Колонки»;
+    - the right-hand group wraps as one block and stays at the right edge.
   - A summary total and project bars, both showing tracked time.
   - A table with the columns Дата, Проект, Задача, Статус, Начало, Конец, Время, Публичное, plus a «Итого» footer row.
   - «Колонки» opens a popover with a checkbox per column. Every column but the actions can be hidden.
@@ -128,7 +132,7 @@ Everything lives in `chrome.storage.local` with snake_case keys.
   - accepts version 1 to 4 files. Payees, clients and invoices merge the same way;
   - settings from the file win only when their `updated_at` is newer than the stored ones.
 - Automatic backups:
-  - the alarm fires hourly, and a file is written at most once a day and only when the data changed;
+  - the alarm fires hourly, and a file is written at most once a day and only when the data changed, settings included;
   - files go to `Downloads/time-tracker-backups/time-tracker-backup_yyyy-MM-dd_HH-mm.json`;
   - the newest 14 files are kept.
 
@@ -170,6 +174,7 @@ Everything lives in `chrome.storage.local` with snake_case keys.
   - Golos Text (400/500/600) for text and Unbounded 600 for numerals;
   - only Latin and Cyrillic woff2 files load, through custom `@font-face` rules, which keeps the build around 144 KB.
 - The dial is the one loud element. Everything else stays quiet.
+- Selects use `appearance: none` with a caret drawn from two gradients in `--muted`, set back from the right edge (`common.css`).
 - The app icon is a blue clock. The toolbar badge carries the run state.
 
 ## TypeScript conventions (from the `typescript:conventions` skill)
